@@ -238,8 +238,15 @@ body {
    a small pointer-driven drag on the header handles moving. Position/size
    persists per-widget in localStorage (src/dashboard/draggable.ts) so a
    visitor's arrangement survives a reload; first-time visitors get the
-   built-in default layout below. */
-.hk-canvas { position: relative; min-height: 1300px; margin-bottom: var(--space-6); }
+   built-in default layout below.
+
+   No side padding/max-width here, and deliberately not nested inside
+   .hk-shell (see index.html) - direct request: "remove the boundary space
+   so the cards can be places freely anywhere." A card's drag range is
+   computed from canvas.clientWidth (draggable.ts), so a full-bleed,
+   unconstrained canvas is what actually gives a card the whole browser
+   width to move in rather than just .hk-shell's centered content column. */
+.hk-canvas { position: relative; width: 100%; min-height: 1300px; margin-bottom: var(--space-6); }
 .hk-widget {
   position: absolute; display: flex; flex-direction: column;
   min-width: 220px; min-height: 160px;
@@ -627,7 +634,12 @@ body {
 }
 
 @media (max-width: 720px) {
-  .hk-canvas { min-height: 0; }
+  /* Free drag placement doesn't apply here anyway (.hk-widget is forced
+     static/stacked below), so the full-bleed canvas gets a little breathing
+     room back on small screens - this doesn't reintroduce the desktop
+     drag-boundary Adam asked to remove, it's just readability for a
+     forced-static mobile list. */
+  .hk-canvas { min-height: 0; padding: 0 var(--gutter-sm); }
   .hk-widget { position: static !important; width: 100% !important; height: auto !important; margin-bottom: var(--space-4); resize: none; }
   .hk-drawer { right: 12px; left: 12px; bottom: 12px; width: auto; max-width: none; }
   .hk-scene-panel-inner { width: 200px; }

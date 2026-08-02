@@ -69,13 +69,25 @@
        element. -->
   <div id="app" class="hk-page"></div>
 
-  <!-- Free-form widget canvas: every card (including all 5 Notes slots) is
-       created dynamically by main.ts via src/dashboard/draggable.ts's
-       createWidget - resizable (native `resize:both`), movable (drag the
-       header), closable (the x button) and re-enableable from the scene
-       taskbar, arrangement remembered per visitor. Starts empty on purpose -
-       there is no longer any static per-widget markup here at all. -->
-  <div class="hk-canvas" id="hk-canvas"></div>
+</div>
+
+<!-- Free-form widget canvas: deliberately OUTSIDE .hk-shell (2026-08-02,
+     direct request: "remove the boundary space so the cards can be places
+     freely anywhere") - .hk-shell's centered max-width column and side
+     gutters are for the page's text content, not the card scene. Living as
+     a direct child of <body>, this is a plain block-level element with no
+     width constraint of its own, so it spans the full viewport edge to
+     edge - draggable.ts's drag-bound math (canvas.clientWidth) then gives
+     cards the whole browser width to move in, not just the padded column.
+     Every card (including all 5 Notes slots) is created dynamically by
+     main.ts via src/dashboard/draggable.ts's createWidget - resizable
+     (native `resize:both`), movable (drag the header), closable (the x
+     button) and re-enableable from the scene taskbar, arrangement
+     remembered per visitor. Starts empty on purpose - there is no longer
+     any static per-widget markup here at all. -->
+<div class="hk-canvas" id="hk-canvas"></div>
+
+<div class="hk-shell">
 
   <footer class="hk-footer">
     Built by <a href="https://github.com/forageopen" target="_blank" rel="noopener">Adam Rosman</a> with Claude (Anthropic) — see <a href="https://github.com/forageopen/human-kernel#credits" target="_blank" rel="noopener">Credits</a>.
