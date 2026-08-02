@@ -68,7 +68,7 @@ describe("renderDashboard", () => {
     const onOpenParameter = vi.fn();
     const onRescan = vi.fn();
 
-    renderDashboard(root, index, [], { onOpenParameter, onRescan });
+    renderDashboard(root, index, [], "inspect", { onOpenParameter, onRescan, onModeChange: vi.fn() });
 
     const domainLabels = Array.from(root.querySelectorAll(".hk-label")).map((el) => el.textContent);
     expect(domainLabels).toContain("DOMAIN: HUMAN");
@@ -85,7 +85,11 @@ describe("renderDashboard", () => {
       { sourceFile: "a.md", sourceRef: "callout#1", message: "bad domain" },
       { sourceFile: "b.md", sourceRef: "callout#2", message: "bad confidence" },
     ];
-    renderDashboard(root, makeIndex(), warnings, { onOpenParameter: vi.fn(), onRescan: vi.fn() });
+    renderDashboard(root, makeIndex(), warnings, "inspect", {
+      onOpenParameter: vi.fn(),
+      onRescan: vi.fn(),
+      onModeChange: vi.fn(),
+    });
 
     const rows = root.querySelectorAll(".hk-warn-row");
     expect(rows.length).toBe(2);
@@ -93,9 +97,10 @@ describe("renderDashboard", () => {
 
   it("shows an explicit empty-vault message instead of a blank grid when there are no parameters", () => {
     const root = document.createElement("div");
-    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], {
+    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "inspect", {
       onOpenParameter: vi.fn(),
       onRescan: vi.fn(),
+      onModeChange: vi.fn(),
     });
     expect(root.textContent).toMatch(/no \[!evidence\] blocks were found/i);
   });
@@ -103,9 +108,53 @@ describe("renderDashboard", () => {
   it("wires the rescan button to onRescan", () => {
     const root = document.createElement("div");
     const onRescan = vi.fn();
-    renderDashboard(root, makeIndex(), [], { onOpenParameter: vi.fn(), onRescan });
-    root.querySelector<HTMLElement>(".hk-toolbar button")?.dispatchEvent(new Event("click", { bubbles: true }));
+    renderDashboard(root, makeIndex(), [], "inspect", { onOpenParameter: vi.fn(), onRescan, onModeChange: vi.fn() });
+    root.querySelector<HTMLElement>(".hk-toolbar .hk-primary")?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(onRescan).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("renderDashboard mode toggle (Brief v2 §9: Immersive/Inspect)", () => {
+  it("marks the current mode's button active and the other one not", () => {
+    const root = document.createElement("div");
+    renderDashboard(root, makeIndex(), [], "immersive", {
+      onOpenParameter: vi.fn(),
+      onRescan: vi.fn(),
+      onModeChange: vi.fn(),
+    });
+    const buttons = Array.from(root.querySelectorAll<HTMLElement>(".hk-mode-btn"));
+    const immersiveBtn = buttons.find((b) => b.textContent === "Immersive");
+    const inspectBtn = buttons.find((b) => b.textContent === "Inspect");
+    expect(immersiveBtn?.classList.contains("active")).toBe(true);
+    expect(inspectBtn?.classList.contains("active")).toBe(false);
+  });
+
+  it("calls onModeChange with the clicked mode", () => {
+    const root = document.createElement("div");
+    const onModeChange = vi.fn();
+    renderDashboard(root, makeIndex(), [], "immersive", { onOpenParameter: vi.fn(), onRescan: vi.fn(), onModeChange });
+    const inspectBtn = Array.from(root.querySelectorAll<HTMLElement>(".hk-mode-btn")).find(
+      (b) => b.textContent === "Inspect"
+    );
+    inspectBtn?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(onModeChange).toHaveBeenCalledWith("inspect");
+  });
+
+  it("applies the scroll-lock class to body only in immersive mode", () => {
+    const root = document.createElement("div");
+    renderDashboard(root, makeIndex(), [], "immersive", {
+      onOpenParameter: vi.fn(),
+      onRescan: vi.fn(),
+      onModeChange: vi.fn(),
+    });
+    expect(document.body.classList.contains("hk-immersive")).toBe(true);
+
+    renderDashboard(root, makeIndex(), [], "inspect", {
+      onOpenParameter: vi.fn(),
+      onRescan: vi.fn(),
+      onModeChange: vi.fn(),
+    });
+    expect(document.body.classList.contains("hk-immersive")).toBe(false);
   });
 });
 

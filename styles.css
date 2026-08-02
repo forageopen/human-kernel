@@ -28,7 +28,18 @@ body {
   background: #18231f; border: 1px solid var(--green); color: var(--green);
   padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 13px;
 }
-.hk-toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.hk-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+/* Immersive/Inspect (Brief v2 §9): Immersive = ambient/observation only, no
+   scroll; Inspect = investigation, scroll + drawer enabled. */
+body.hk-immersive { overflow: hidden; }
+.hk-mode-toggle { display: flex; gap: 6px; }
+.hk-mode-btn {
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 12px;
+}
+.hk-mode-btn.active { border-color: var(--green); color: var(--green); background: rgba(114,213,154,0.08); }
+.hk-grid.immersive .hk-param-card { cursor: default; }
 
 .hk-card {
   background: linear-gradient(145deg, #111716, #0b100f); border: 1px solid var(--line);

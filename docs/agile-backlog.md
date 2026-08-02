@@ -36,10 +36,14 @@ Estimates are Fibonacci story points, not hours. Every story's acceptance criter
 
 | Story | Points | Tag | Acceptance Criteria |
 |---|---|---|---|
-| 4.1 SWOT card wired to Parameter query by domain | 5 | **[MVD]** | Pick one visualization type to prove the loop end-to-end; SWOT chosen as simplest. |
+| 4.1 SWOT card wired to Parameter query by domain | 5 | **[MVD]** — **see correction below** | Pick one visualization type to prove the loop end-to-end; SWOT chosen as simplest. |
 | 4.2 DISC card | 5 | Post-MVD | Same pattern as 4.1, second visualization type — demonstrates the pattern generalizes, not required for the first demo. |
 | 4.3 Causal map card wired to Relationship data | 8 | Post-MVD | Depends on 2.3. |
 | 4.4 Timeline card wired to Evidence timestamps | 5 | Post-MVD | |
+
+> **Correction (2026-08-02, found during dashboard wiring, Approved Founder):** 4.1 as originally written conflates two different things. "SWOT" means four quadrants — Strengths, Weaknesses, Opportunities, Threats. "By domain" means grouped by the six Human Kernel Domains (Reality/Human/Civilization/Strategy/Adaptation/Legacy). Those are different axes; nothing in this backlog, the Spec, any ADR, or the wireframes ever mapped one onto the other. Confirmed by full-text search: zero occurrences of "strength/weakness/opportunity/threat" anywhere in this repo outside this note. `Parameter` has no valence field (positive/negative) and no internal/external field — `domain`, `status`, and `confidence` don't encode either axis. Building a literal SWOT card would mean inventing that mapping on the spot, which breaks Principle 1 (`README.md` — "extract or compile, never invent"). Not doing that.
+>
+> **What actually shipped instead:** `src/dashboard/render.ts`'s domain-grouped card grid — real, live, wired to actual `Parameter` data, satisfies the deeper goal of 4.1 ("prove the loop end-to-end with one real visualization type") without pretending it's SWOT. Relabel 4.1 as **done under its honest name ("Domain view"), not as SWOT**. True SWOT stays **Post-MVD, blocked** until someone makes a real, documented decision (new ADR) about where a valence/locus signal would even come from — most likely a new optional `Parameter` field, which is a schema change, not a rendering task.
 
 ## EPIC-5: Relationship/Causal Tagging (Phase 2)
 
@@ -74,3 +78,5 @@ Estimates are Fibonacci story points, not hours. Every story's acceptance criter
 ## MVD Critical Path (for a scheduling view, not a new list)
 
 Stories 1.1 → 1.4 → 2.1 → 2.2 → 2.4 → 3.1 → 3.2 → 3.3 → 4.1, in that dependency order, is the shortest real path to "open a vault, see one real evidence-backed card, inspect it." That's 3+8+3+5+3+2+3+5+5 = **37 points** of critical-path work. Everything else in this backlog can happen before or after that path without blocking the demo.
+
+**Status (2026-08-02):** all 9 critical-path stories are now built and unit-tested — 1.1/1.4/2.1/2.2/2.4 in `src/`, 3.1 (Immersive/Inspect toggle, Brief v2 §9) and 3.2/3.3 (card grid + evidence drawer) in `src/dashboard/`, 4.1 done under its honest name ("Domain view," not SWOT — see the correction note above). No manual browser click-through with a real vault yet — see `src/dashboard/README.md`.

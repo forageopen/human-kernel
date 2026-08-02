@@ -14,6 +14,14 @@
 import type { HumanKernelIndex, Parameter } from "../types.js";
 import type { ParseWarning } from "../evidence-parser/index.js";
 
+/** Brief v2 §9, quoted exactly: "Immersive mode: no scroll, ambient
+ * command-center view. Observation only." / "Inspect mode: scroll enabled,
+ * evidence drawer active. Investigation." Screen = awareness layer -> Drawer
+ * = investigation layer -> Evidence = verification layer. This type is UI
+ * state, not part of the canonical data model, so it lives here and not in
+ * types.ts. */
+export type DashboardMode = "immersive" | "inspect";
+
 export function renderUnsupportedBrowser(root: HTMLElement): void {
   root.innerHTML = "";
   const box = document.createElement("div");
@@ -83,19 +91,45 @@ function renderParameterCard(param: Parameter, onOpen: (param: Parameter) => voi
 export interface DashboardCallbacks {
   onOpenParameter: (param: Parameter) => void;
   onRescan: () => void;
+  onModeChange: (mode: DashboardMode) => void;
 }
 
-/** Renders the populated dashboard: grouped-by-domain parameter cards + warnings, if any. */
+function renderModeToggle(mode: DashboardMode, onModeChange: (mode: DashboardMode) => void): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "hk-mode-toggle";
+  (["immersive", "inspect"] as const).forEach((m) => {
+    const btn = document.createElement("button");
+    btn.className = "hk-mode-btn" + (mode === m ? " active" : "");
+    btn.textContent = m === "immersive" ? "Immersive" : "Inspect";
+    btn.title =
+      m === "immersive"
+        ? "Observation only - no scroll, drawer closed (Brief v2 §9)"
+        : "Investigation - scroll and evidence drawer enabled (Brief v2 §9)";
+    btn.addEventListener("click", () => onModeChange(m));
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+/** Renders the populated dashboard: grouped-by-domain parameter cards + warnings, if any.
+ * `mode` only controls presentation here (toggle state, scroll-lock class, cursor
+ * affordance on cards) - app.ts owns the actual behavioral gating of whether a
+ * card click is allowed to open the evidence drawer (Immersive = "observation
+ * only", Brief v2 §9). */
 export function renderDashboard(
   root: HTMLElement,
   index: HumanKernelIndex,
   warnings: ParseWarning[],
+  mode: DashboardMode,
   callbacks: DashboardCallbacks
 ): void {
   root.innerHTML = "";
+  document.body.classList.toggle("hk-immersive", mode === "immersive");
 
   const toolbar = document.createElement("div");
   toolbar.className = "hk-toolbar";
+  toolbar.appendChild(renderModeToggle(mode, callbacks.onModeChange));
+
   const rescanBtn = document.createElement("button");
   rescanBtn.className = "hk-primary";
   rescanBtn.textContent = "Re-scan Vault";
@@ -115,7 +149,7 @@ export function renderDashboard(
   }
 
   const grid = document.createElement("div");
-  grid.className = "hk-grid";
+  grid.className = "hk-grid " + mode; // mode class only drives cursor affordance (CSS) - see styles.css
   for (const [domain, params] of byDomain) {
     const card = document.createElement("div");
     card.className = "hk-card";

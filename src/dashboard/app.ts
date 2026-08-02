@@ -24,6 +24,7 @@ import {
   renderDashboard,
   renderDrawer,
   closeDrawer,
+  type DashboardMode,
 } from "./render.js";
 
 export interface VaultFileLike {
@@ -86,24 +87,45 @@ export async function wireBrowserUI(root: HTMLElement): Promise<void> {
 
   let currentVaultHandle: FileSystemDirectoryHandle | null = null;
   let currentIndex: HumanKernelIndex | null = null;
+  let currentWarnings: ParseWarning[] = [];
+  // Brief v2 §9: Immersive is the ambient/awareness-layer view - lands here first.
+  let mode: DashboardMode = "immersive";
 
   const deps: VaultScanDeps = {
     readAllMarkdownFiles: (handle) => readAllMarkdownFiles(handle as FileSystemDirectoryHandle),
     writeIndex: (handle, index) => writeIndex(handle as FileSystemDirectoryHandle, index),
   };
 
-  async function scanAndRender(): Promise<void> {
-    if (!currentVaultHandle) return;
-    const result = await runVaultScan(currentVaultHandle, deps);
-    currentIndex = result.index;
-    renderDashboard(root, result.index, result.warnings, {
+  // Re-renders from whatever was last scanned, without re-reading the vault -
+  // used for mode toggles so switching Immersive/Inspect doesn't trigger a re-scan.
+  function renderCurrent(): void {
+    if (!currentIndex) return;
+    renderDashboard(root, currentIndex, currentWarnings, mode, {
       onOpenParameter: (param: Parameter) => {
-        if (currentIndex) renderDrawer(root, param, currentIndex, () => closeDrawer(root));
+        // Brief v2 §9, quoted exactly: "Immersive mode: ... Observation only."
+        // Investigation (the drawer) is Inspect-mode-only - enforced here, not
+        // just in the CSS, so this holds even if a click reaches the handler.
+        if (mode === "inspect" && currentIndex) {
+          renderDrawer(root, param, currentIndex, () => closeDrawer(root));
+        }
       },
       onRescan: () => {
         void scanAndRender();
       },
+      onModeChange: (newMode) => {
+        mode = newMode;
+        if (mode === "immersive") closeDrawer(root); // re-entering observation-only closes any open investigation
+        renderCurrent();
+      },
     });
+  }
+
+  async function scanAndRender(): Promise<void> {
+    if (!currentVaultHandle) return;
+    const result = await runVaultScan(currentVaultHandle, deps);
+    currentIndex = result.index;
+    currentWarnings = result.warnings;
+    renderCurrent();
   }
 
   async function handlePickVault(): Promise<void> {
