@@ -36,16 +36,25 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Assemble static site (dist/ + the hand-written entry files, minus test output)
+      # index.html references "dist/main.js" and "styles.css" - paths that are
+      # only correct when index.html sits at the repo root next to a dist/
+      # subfolder (the local-dev layout). Deploying dist/ itself as the site
+      # root (as an earlier version of this workflow did) flattens that away
+      # and 404s the script. Fix: stage a site/ folder that reproduces the
+      # repo-root-plus-dist/-subfolder layout exactly, so index.html's
+      # existing relative paths stay correct with zero changes to index.html.
+      - name: Assemble static site (site/index.html + site/styles.css + site/dist/**, minus test output)
         run: |
           find dist -name '*.test.js' -delete
-          cp index.html styles.css dist/
+          mkdir -p site
+          cp index.html styles.css site/
+          cp -r dist site/dist
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: build
