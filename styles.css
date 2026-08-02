@@ -52,6 +52,21 @@ body {
 .hk-primary:hover { background: rgba(200, 169, 110, 0.08); }
 .hk-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 
+/* Source banner: says whose data is on screen, offers the one alternative
+   action. This is the "move the upload control somewhere else" fix - it's
+   never the primary thing the page asks you to do. */
+.hk-source-banner {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 16px; margin-bottom: 14px; border-radius: 10px;
+  background: rgba(200, 169, 110, 0.06); border: 1px solid var(--border-hint);
+  font-size: 12px; color: var(--stone); font-family: var(--font-body);
+}
+.hk-link-btn {
+  background: none; border: none; color: var(--ember); cursor: pointer; font-size: 12px;
+  font-family: var(--font-heading); text-decoration: underline; white-space: nowrap; padding: 0;
+}
+.hk-link-btn:hover { color: var(--text-strong); }
+
 /* Immersive/Inspect (Brief v2 SS9): Immersive = ambient/observation only, no
    scroll; Inspect = investigation, scroll + drawer enabled. */
 body.hk-immersive { overflow: hidden; }
@@ -73,6 +88,38 @@ body.hk-immersive { overflow: hidden; }
   font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stone);
   margin-bottom: 12px; font-family: var(--font-mono);
 }
+
+/* Profile overview: heatmap card + 6-up chart grid (2026-08-02 rebuild).
+   Sits above the domain-grouped detail grid - awareness before drill-down,
+   same ordering principle as Immersive-before-Inspect. */
+.hk-overview { margin-bottom: 28px; }
+.hk-overview-heading { margin-top: 6px; }
+
+.hk-heatmap-card { overflow-x: auto; }
+.hk-heatmap-caption { margin-bottom: 14px; }
+.hk-heatmap-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+  max-width: 480px;
+}
+.hk-heatmap-dow {
+  text-align: center; font-size: 10px; color: var(--stone); font-family: var(--font-mono);
+  padding-bottom: 4px; letter-spacing: 0.05em;
+}
+.hk-heatmap-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-size: 11px; font-family: var(--font-mono); color: var(--text);
+  background: var(--card-alt); border: 1px solid var(--border-hint);
+}
+.hk-heatmap-cell.empty { background: transparent; border-color: transparent; }
+.hk-heatmap-cell.level-0 { background: var(--card-alt); color: var(--stone); }
+.hk-heatmap-cell.level-1 { background: rgba(200, 169, 110, 0.2); border-color: rgba(200, 169, 110, 0.2); }
+.hk-heatmap-cell.level-2 { background: rgba(200, 169, 110, 0.42); border-color: rgba(200, 169, 110, 0.42); color: var(--text-strong); }
+.hk-heatmap-cell.level-3 { background: rgba(200, 169, 110, 0.68); border-color: rgba(200, 169, 110, 0.68); color: #1c1c1a; }
+.hk-heatmap-cell.level-4 { background: var(--ember); border-color: var(--ember); color: #1c1c1a; font-weight: 600; }
+
+.hk-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+.hk-chart-card { margin-bottom: 0; }
+.hk-chart-canvas-wrap { position: relative; height: 220px; }
 
 .hk-warn-row {
   display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--crimson);

@@ -3,11 +3,13 @@ import { describe, it, expect, vi } from "vitest";
 import {
   renderEmptyState,
   renderUnsupportedBrowser,
+  renderNotice,
   renderDashboard,
   renderDrawer,
   closeDrawer,
   renderImmersiveLockPrompt,
   closeImmersiveLockPrompt,
+  type DashboardCallbacks,
 } from "./render.js";
 import type { HumanKernelIndex, Parameter } from "../types.js";
 import type { ParseWarning } from "../evidence-parser/index.js";
@@ -42,6 +44,17 @@ function makeIndex(overrides?: Partial<HumanKernelIndex>): HumanKernelIndex {
   };
 }
 
+function makeCallbacks(overrides?: Partial<DashboardCallbacks>): DashboardCallbacks {
+  return {
+    onOpenParameter: vi.fn(),
+    onRescan: vi.fn(),
+    onModeChange: vi.fn(),
+    onConnectOwnVault: vi.fn(),
+    onViewSample: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe("renderUnsupportedBrowser", () => {
   it("renders a message mentioning unsupported browser", () => {
     const root = document.createElement("div");
@@ -63,14 +76,30 @@ describe("renderEmptyState", () => {
   });
 });
 
+describe("renderNotice", () => {
+  it("shows the given message in a dismissible toast", () => {
+    const root = document.createElement("div");
+    renderNotice(root, "Connecting your own vault needs Chrome, Edge, or Brave.");
+    const toast = root.querySelector(".hk-lock-toast");
+    expect(toast?.classList.contains("active")).toBe(true);
+    expect(toast?.textContent).toMatch(/Chrome, Edge, or Brave/);
+  });
+
+  it("its own close control dismisses it", () => {
+    const root = document.createElement("div");
+    renderNotice(root, "test message");
+    root.querySelector<HTMLElement>(".hk-lock-toast .hk-close")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(root.querySelector(".hk-lock-toast")?.classList.contains("active")).toBe(false);
+  });
+});
+
 describe("renderDashboard", () => {
   it("groups parameters by domain and renders a card per parameter", () => {
     const root = document.createElement("div");
     const index = makeIndex();
-    const onOpenParameter = vi.fn();
-    const onRescan = vi.fn();
+    const callbacks = makeCallbacks();
 
-    renderDashboard(root, index, [], "inspect", { onOpenParameter, onRescan, onModeChange: vi.fn() });
+    renderDashboard(root, index, [], "inspect", "own-vault", callbacks);
 
     const domainLabels = Array.from(root.querySelectorAll(".hk-label")).map((el) => el.textContent);
     expect(domainLabels).toContain("DOMAIN: HUMAN");
@@ -78,7 +107,7 @@ describe("renderDashboard", () => {
     const cards = root.querySelectorAll(".hk-param-card");
     expect(cards.length).toBe(1);
     cards[0]?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(onOpenParameter).toHaveBeenCalledWith(index.parameters[0]);
+    expect(callbacks.onOpenParameter).toHaveBeenCalledWith(index.parameters[0]);
   });
 
   it("renders one warning row per warning, never silently dropping any", () => {
@@ -87,43 +116,73 @@ describe("renderDashboard", () => {
       { sourceFile: "a.md", sourceRef: "callout#1", message: "bad domain" },
       { sourceFile: "b.md", sourceRef: "callout#2", message: "bad confidence" },
     ];
-    renderDashboard(root, makeIndex(), warnings, "inspect", {
-      onOpenParameter: vi.fn(),
-      onRescan: vi.fn(),
-      onModeChange: vi.fn(),
-    });
+    renderDashboard(root, makeIndex(), warnings, "inspect", "own-vault", makeCallbacks());
 
     const rows = root.querySelectorAll(".hk-warn-row");
     expect(rows.length).toBe(2);
   });
 
-  it("shows an explicit empty-vault message instead of a blank grid when there are no parameters", () => {
+  it("shows an explicit empty message instead of a blank grid when there are no parameters", () => {
     const root = document.createElement("div");
-    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "inspect", {
-      onOpenParameter: vi.fn(),
-      onRescan: vi.fn(),
-      onModeChange: vi.fn(),
-    });
+    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "inspect", "own-vault", makeCallbacks());
     expect(root.textContent).toMatch(/no \[!evidence\] blocks were found/i);
   });
 
-  it("wires the rescan button to onRescan", () => {
+  it("shows the sample-specific empty message when viewing the reference profile", () => {
     const root = document.createElement("div");
-    const onRescan = vi.fn();
-    renderDashboard(root, makeIndex(), [], "inspect", { onOpenParameter: vi.fn(), onRescan, onModeChange: vi.fn() });
-    root.querySelector<HTMLElement>(".hk-toolbar .hk-primary")?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(onRescan).toHaveBeenCalledTimes(1);
+    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "inspect", "sample", makeCallbacks());
+    expect(root.textContent).toMatch(/reference profile is still being prepared/i);
+  });
+
+  it("wires the rescan button to onRescan, and only shows it for a connected vault", () => {
+    const root = document.createElement("div");
+    const callbacks = makeCallbacks();
+    renderDashboard(root, makeIndex(), [], "inspect", "own-vault", callbacks);
+    const rescanBtn = root.querySelector<HTMLElement>(".hk-toolbar .hk-primary");
+    expect(rescanBtn).not.toBeNull();
+    rescanBtn?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(callbacks.onRescan).toHaveBeenCalledTimes(1);
+
+    const sampleRoot = document.createElement("div");
+    renderDashboard(sampleRoot, makeIndex(), [], "inspect", "sample", makeCallbacks());
+    expect(sampleRoot.querySelector(".hk-toolbar .hk-primary")).toBeNull();
+  });
+
+  it("renders the profile overview (heatmap + chart grid) above the domain grid when parameters exist", () => {
+    const root = document.createElement("div");
+    renderDashboard(root, makeIndex(), [], "inspect", "sample", makeCallbacks());
+    expect(root.querySelector(".hk-overview")).not.toBeNull();
+    expect(root.querySelector(".hk-heatmap-card")).not.toBeNull();
+    expect(root.querySelectorAll(".hk-chart-card").length).toBe(6);
+  });
+});
+
+describe("renderDashboard source banner (view: sample vs. own-vault)", () => {
+  it("sample view: names the reference profile and offers to connect a vault", () => {
+    const root = document.createElement("div");
+    const callbacks = makeCallbacks();
+    renderDashboard(root, makeIndex(), [], "inspect", "sample", callbacks);
+
+    expect(root.querySelector(".hk-source-banner")?.textContent).toMatch(/reference profile/i);
+    root.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(callbacks.onConnectOwnVault).toHaveBeenCalledTimes(1);
+  });
+
+  it("own-vault view: says a vault is connected and offers to view the sample instead", () => {
+    const root = document.createElement("div");
+    const callbacks = makeCallbacks();
+    renderDashboard(root, makeIndex(), [], "inspect", "own-vault", callbacks);
+
+    expect(root.querySelector(".hk-source-banner")?.textContent).toMatch(/your own vault is connected/i);
+    root.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(callbacks.onViewSample).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("renderDashboard mode toggle (Brief v2 §9: Immersive/Inspect)", () => {
   it("marks the current mode's button active and the other one not", () => {
     const root = document.createElement("div");
-    renderDashboard(root, makeIndex(), [], "immersive", {
-      onOpenParameter: vi.fn(),
-      onRescan: vi.fn(),
-      onModeChange: vi.fn(),
-    });
+    renderDashboard(root, makeIndex(), [], "immersive", "own-vault", makeCallbacks());
     const buttons = Array.from(root.querySelectorAll<HTMLElement>(".hk-mode-btn"));
     const immersiveBtn = buttons.find((b) => b.textContent === "Immersive");
     const inspectBtn = buttons.find((b) => b.textContent === "Inspect");
@@ -133,29 +192,21 @@ describe("renderDashboard mode toggle (Brief v2 §9: Immersive/Inspect)", () => 
 
   it("calls onModeChange with the clicked mode", () => {
     const root = document.createElement("div");
-    const onModeChange = vi.fn();
-    renderDashboard(root, makeIndex(), [], "immersive", { onOpenParameter: vi.fn(), onRescan: vi.fn(), onModeChange });
+    const callbacks = makeCallbacks();
+    renderDashboard(root, makeIndex(), [], "immersive", "own-vault", callbacks);
     const inspectBtn = Array.from(root.querySelectorAll<HTMLElement>(".hk-mode-btn")).find(
       (b) => b.textContent === "Inspect"
     );
     inspectBtn?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(onModeChange).toHaveBeenCalledWith("inspect");
+    expect(callbacks.onModeChange).toHaveBeenCalledWith("inspect");
   });
 
   it("applies the scroll-lock class to body only in immersive mode", () => {
     const root = document.createElement("div");
-    renderDashboard(root, makeIndex(), [], "immersive", {
-      onOpenParameter: vi.fn(),
-      onRescan: vi.fn(),
-      onModeChange: vi.fn(),
-    });
+    renderDashboard(root, makeIndex(), [], "immersive", "own-vault", makeCallbacks());
     expect(document.body.classList.contains("hk-immersive")).toBe(true);
 
-    renderDashboard(root, makeIndex(), [], "inspect", {
-      onOpenParameter: vi.fn(),
-      onRescan: vi.fn(),
-      onModeChange: vi.fn(),
-    });
+    renderDashboard(root, makeIndex(), [], "inspect", "own-vault", makeCallbacks());
     expect(document.body.classList.contains("hk-immersive")).toBe(false);
   });
 });

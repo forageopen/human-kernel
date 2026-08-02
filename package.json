@@ -9,7 +9,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate-schema": "node scripts/validate-schema.mjs",
-    "build": "tsc"
+    "build": "tsc",
+    "build-sample-data": "node scripts/build-sample-data.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

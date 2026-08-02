@@ -10,13 +10,18 @@
 <!-- Forage brand fonts (forage-colorway skill, FDMAI-BRAND-001). Fallbacks in
      styles.css (Georgia/Arial/Courier New) apply if this CDN load fails. -->
 <link rel="stylesheet" href="styles.css">
+<!-- Chart.js: the one CDN dependency for the 5 chart cards (src/dashboard/charts.ts).
+     Loaded as a plain global script on purpose - no bundler, no npm dependency,
+     keeps the vanilla-DOM architecture (docs/sprint-0-walkthrough-simulated.md)
+     intact. Absent in jsdom tests by design; charts.ts no-ops if this isn't loaded. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
 <div class="hk-topbar">
   <div>
     <h1>Human Kernel</h1>
-    <div class="hk-sub">Human Condition Intelligence Layer — MVD (docs/agile-backlog.md)</div>
+    <div class="hk-sub">A working example, built from a real profile — open your own vault when you're ready.</div>
   </div>
 </div>
 

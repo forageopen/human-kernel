@@ -13,6 +13,16 @@
 
 import type { HumanKernelIndex, Parameter } from "../types.js";
 import type { ParseWarning } from "../evidence-parser/index.js";
+import {
+  drawDomainCountChart,
+  drawConfidenceHistogram,
+  drawStatusDonut,
+  drawRelationshipTypeChart,
+  drawSourceFileChart,
+  drawDomainConfidenceRadar,
+  renderEvidenceHeatmap,
+  monthWithMostEvidence,
+} from "./charts.js";
 
 /** Brief v2 §9, quoted exactly: "Immersive mode: no scroll, ambient
  * command-center view. Observation only." / "Inspect mode: scroll enabled,
@@ -21,6 +31,11 @@ import type { ParseWarning } from "../evidence-parser/index.js";
  * state, not part of the canonical data model, so it lives here and not in
  * types.ts. */
 export type DashboardMode = "immersive" | "inspect";
+
+/** Which data the dashboard is currently showing - the bundled public
+ * reference profile, or a real vault the visitor picked themselves. Also UI
+ * state, not canonical data. */
+export type ViewSource = "sample" | "own-vault";
 
 export function renderUnsupportedBrowser(root: HTMLElement): void {
   root.innerHTML = "";
@@ -51,6 +66,28 @@ export function renderEmptyState(root: HTMLElement, onPickVault: () => void): vo
   btn.addEventListener("click", onPickVault);
   box.appendChild(btn);
   root.appendChild(box);
+}
+
+/** Dismissible toast, bottom-right - used for the Immersive lock prompt and
+ * for anything else that needs to say something without taking over the
+ * page (Brief v2 §9 already established this position/shape for the drawer). */
+export function renderNotice(root: HTMLElement, message: string): void {
+  let toast = root.querySelector<HTMLElement>(".hk-lock-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "hk-lock-toast";
+    root.appendChild(toast);
+  }
+  toast.innerHTML = "";
+  const msg = document.createElement("div");
+  msg.textContent = message;
+  toast.appendChild(msg);
+  const closeBtn = document.createElement("span");
+  closeBtn.className = "hk-close";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => toast?.classList.remove("active"));
+  toast.appendChild(closeBtn);
+  toast.classList.add("active");
 }
 
 function renderWarningsPanel(warnings: ParseWarning[]): HTMLElement {
@@ -92,6 +129,8 @@ export interface DashboardCallbacks {
   onOpenParameter: (param: Parameter) => void;
   onRescan: () => void;
   onModeChange: (mode: DashboardMode) => void;
+  onConnectOwnVault: () => void;
+  onViewSample: () => void;
 }
 
 function renderModeToggle(mode: DashboardMode, onModeChange: (mode: DashboardMode) => void): HTMLElement {
@@ -111,35 +150,144 @@ function renderModeToggle(mode: DashboardMode, onModeChange: (mode: DashboardMod
   return wrap;
 }
 
-/** Renders the populated dashboard: grouped-by-domain parameter cards + warnings, if any.
+/** Says whose data is on screen and offers the one alternative action - this
+ * is the "move the upload control somewhere else" fix: connecting a vault is
+ * no longer the primary thing the page asks you to do, it's a small,
+ * always-available secondary action next to whichever profile you're on. */
+function renderSourceBanner(viewing: ViewSource, callbacks: DashboardCallbacks): HTMLElement {
+  const banner = document.createElement("div");
+  banner.className = "hk-source-banner";
+
+  const text = document.createElement("span");
+  const link = document.createElement("button");
+  link.className = "hk-link-btn";
+
+  if (viewing === "sample") {
+    text.textContent = "Reference profile — Adam Rosman's Human Kernel, the open example for this course.";
+    link.textContent = "Connect your own vault";
+    link.addEventListener("click", callbacks.onConnectOwnVault);
+  } else {
+    text.textContent = "Your own vault is connected.";
+    link.textContent = "View the reference profile instead";
+    link.addEventListener("click", callbacks.onViewSample);
+  }
+
+  banner.appendChild(text);
+  banner.appendChild(link);
+  return banner;
+}
+
+function renderChartCard(titleText: string, canvasId: string): { card: HTMLElement; canvas: HTMLCanvasElement } {
+  const card = document.createElement("div");
+  card.className = "hk-card hk-chart-card";
+  const label = document.createElement("div");
+  label.className = "hk-label";
+  label.textContent = titleText;
+  card.appendChild(label);
+  const canvasWrap = document.createElement("div");
+  canvasWrap.className = "hk-chart-canvas-wrap";
+  const canvas = document.createElement("canvas");
+  canvas.id = canvasId;
+  canvasWrap.appendChild(canvas);
+  card.appendChild(canvasWrap);
+  return { card, canvas };
+}
+
+/** The overview section: one calendar heatmap + five chart cards, all
+ * derived from real Evidence/Parameter/Relationship fields (see charts.ts's
+ * own header comment for why no chart here invents a data axis). Sits above
+ * the domain-grouped detail grid - overview first, drill-down after, same
+ * awareness-before-investigation ordering as the Immersive/Inspect split. */
+function renderOverview(index: HumanKernelIndex): HTMLElement {
+  const section = document.createElement("div");
+  section.className = "hk-overview";
+
+  const heading = document.createElement("div");
+  heading.className = "hk-label hk-overview-heading";
+  heading.textContent = "PROFILE OVERVIEW";
+  section.appendChild(heading);
+
+  const heatmapCard = document.createElement("div");
+  heatmapCard.className = "hk-card hk-heatmap-card";
+  heatmapCard.appendChild(renderEvidenceHeatmap(index.evidence, monthWithMostEvidence(index.evidence)));
+  section.appendChild(heatmapCard);
+
+  const chartGrid = document.createElement("div");
+  chartGrid.className = "hk-chart-grid";
+
+  const domainCount = renderChartCard("PARAMETERS BY DOMAIN", "hk-chart-domain-count");
+  const confHist = renderChartCard("CONFIDENCE DISTRIBUTION", "hk-chart-confidence-hist");
+  const statusDonut = renderChartCard("STATUS BREAKDOWN", "hk-chart-status-donut");
+  const relTypes = renderChartCard("RELATIONSHIP TYPES", "hk-chart-relationship-types");
+  const sourceFiles = renderChartCard("EVIDENCE BY SOURCE FILE", "hk-chart-source-files");
+  const radar = renderChartCard("MEAN CONFIDENCE BY DOMAIN", "hk-chart-domain-radar");
+
+  for (const { card } of [domainCount, confHist, statusDonut, relTypes, sourceFiles, radar]) {
+    chartGrid.appendChild(card);
+  }
+  section.appendChild(chartGrid);
+
+  // Charts need their canvases attached to the document before Chart.js can
+  // size them correctly - draw after appending, not before.
+  drawDomainCountChart(domainCount.canvas, index.parameters);
+  drawConfidenceHistogram(confHist.canvas, index.parameters);
+  drawStatusDonut(statusDonut.canvas, index.parameters);
+  drawRelationshipTypeChart(relTypes.canvas, index.relationships);
+  drawSourceFileChart(sourceFiles.canvas, index.evidence);
+  drawDomainConfidenceRadar(radar.canvas, index.parameters);
+
+  return section;
+}
+
+/** Renders the populated dashboard: profile overview (heatmap + charts),
+ * domain-grouped Parameter cards, warnings, if any.
  * `mode` only controls presentation here (toggle state, scroll-lock class, cursor
  * affordance on cards) - app.ts owns the actual behavioral gating of whether a
  * card click is allowed to open the evidence drawer (Immersive = "observation
- * only", Brief v2 §9). */
+ * only", Brief v2 §9). `viewing` says whether this is the bundled reference
+ * profile or a real connected vault. */
 export function renderDashboard(
   root: HTMLElement,
   index: HumanKernelIndex,
   warnings: ParseWarning[],
   mode: DashboardMode,
+  viewing: ViewSource,
   callbacks: DashboardCallbacks
 ): void {
   root.innerHTML = "";
   document.body.classList.toggle("hk-immersive", mode === "immersive");
 
+  root.appendChild(renderSourceBanner(viewing, callbacks));
+
   const toolbar = document.createElement("div");
   toolbar.className = "hk-toolbar";
   toolbar.appendChild(renderModeToggle(mode, callbacks.onModeChange));
 
-  const rescanBtn = document.createElement("button");
-  rescanBtn.className = "hk-primary";
-  rescanBtn.textContent = "Re-scan Vault";
-  rescanBtn.addEventListener("click", callbacks.onRescan);
-  toolbar.appendChild(rescanBtn);
+  if (viewing === "own-vault") {
+    const rescanBtn = document.createElement("button");
+    rescanBtn.className = "hk-primary";
+    rescanBtn.textContent = "Re-scan Vault";
+    rescanBtn.addEventListener("click", callbacks.onRescan);
+    toolbar.appendChild(rescanBtn);
+  }
   root.appendChild(toolbar);
 
   if (warnings.length > 0) {
     root.appendChild(renderWarningsPanel(warnings));
   }
+
+  if (index.parameters.length === 0) {
+    const none = document.createElement("div");
+    none.className = "hk-muted";
+    none.textContent =
+      viewing === "sample"
+        ? "Reference profile is still being prepared - check back soon, or connect your own vault above."
+        : "Vault parsed, but no [!evidence] blocks were found (Spec v0.1 §4).";
+    root.appendChild(none);
+    return;
+  }
+
+  root.appendChild(renderOverview(index));
 
   const byDomain = new Map<string, Parameter[]>();
   for (const param of index.parameters) {
@@ -147,6 +295,11 @@ export function renderDashboard(
     list.push(param);
     byDomain.set(param.domain, list);
   }
+
+  const detailHeading = document.createElement("div");
+  detailHeading.className = "hk-label hk-overview-heading";
+  detailHeading.textContent = "PARAMETERS BY DOMAIN";
+  root.appendChild(detailHeading);
 
   const grid = document.createElement("div");
   grid.className = "hk-grid " + mode; // mode class only drives cursor affordance (CSS) - see styles.css
@@ -163,13 +316,6 @@ export function renderDashboard(
     grid.appendChild(card);
   }
   root.appendChild(grid);
-
-  if (index.parameters.length === 0) {
-    const none = document.createElement("div");
-    none.className = "hk-muted";
-    none.textContent = "Vault parsed, but no [!evidence] blocks were found (Spec v0.1 §4).";
-    root.appendChild(none);
-  }
 }
 
 /** Evidence drawer - Brief v2 §10 principle 2 ("every claim needs a witness") made visible. */
@@ -217,7 +363,7 @@ export function closeDrawer(root: HTMLElement): void {
   drawer?.classList.remove("active");
 }
 
-/** Immersive mode is "observation only" (Brief v2 SS9) - clicking a card must
+/** Immersive mode is "observation only" (Brief v2 §9) - clicking a card must
  * not just silently do nothing. This says why, and lets you act on it in one
  * click rather than making you find the mode toggle yourself. */
 export function renderImmersiveLockPrompt(root: HTMLElement, onSwitchToInspect: () => void): void {

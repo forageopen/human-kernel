@@ -1,0 +1,315 @@
+{
+  "schemaVersion": "0.1",
+  "generatedAt": "2026-08-02T07:29:12.116Z",
+  "evidence": [
+    {
+      "id": "08ec09a2-fcab-4b25-87b3-3d4fd63e18d1",
+      "sourceFile": "thinking.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2026-07-04T00:00:00.000Z",
+      "context": "thinking.md",
+      "observation": "Self-diagnosed thinking style is a hybrid of first-principles decomposition,\nsystems-architecture thinking (rebuilding into layered frameworks), and\nmeta-epistemic design (designing how thinking itself should be evaluated) —\nsummarized as \"architecting cognition systems using first-principles tools,\"\nnot pure first-principles thinking alone.",
+      "confidence": 0.65
+    },
+    {
+      "id": "12fc451a-fb3f-4541-bc25-dbef2dd666d3",
+      "sourceFile": "life-philosophy.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "life-philosophy.md",
+      "observation": "States as operating principle: \"never tell anyone anything before it's\ndone\" and \"too much availability kills your value\" — treats silence before\ncompletion and scarcity of presence as deliberate, chosen tactics rather\nthan incidental habits.",
+      "confidence": 0.75
+    },
+    {
+      "id": "221cb006-4f8f-4741-b1ac-4862d12e46ef",
+      "sourceFile": "position.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2026-05-15T00:00:00.000Z",
+      "context": "position.md",
+      "observation": "Self-described operating roles: Inquisitive (thinking), Generalist\n(learning), Founder (creating), Mentor (inspiring), Strategist (managing).\nSelf-summary: \"high-agency aesthetic male lifestyle — the intelligent,\nattractive, solitary builder.\"",
+      "confidence": 0.6
+    },
+    {
+      "id": "4c981187-b634-4059-9807-903ea1b3bf82",
+      "sourceFile": "life-philosophy.md",
+      "sourceRef": "callout#3",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "life-philosophy.md",
+      "observation": "Recurring maxims recorded as personal philosophy: \"the smarter you get, the\nless you speak\"; \"pursue yourself\" (finding who you are matters more than\nseeking validation); \"what is meant for you will reach you... what isn't\nmeant for you won't reach you, even if it is between your lips\" (destiny as\nbeyond direct control); \"be a good person, but don't waste time proving\nit\"; \"God removes to replace\" (loss framed as preparation); \"strength comes\nfrom within, not external validation\"; \"you're going to piss a lot of\npeople off taking your power back — do it anyway.\"",
+      "confidence": 0.8
+    },
+    {
+      "id": "a44fab72-ec1d-4988-b12a-3dea4f3ef634",
+      "sourceFile": "spirituality.md",
+      "sourceRef": "callout#4",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "spirituality.md",
+      "observation": "States four core values: independence and self-authenticity (carving one's\nown path); truth-seeking (challenging societal conditioning); emotional\nresilience (respecting strength through struggle over easy solutions); and\njustice/integrity, with explicit dislike of hypocrisy in religious and\npolitical systems.",
+      "confidence": 0.75
+    },
+    {
+      "id": "ad09c6eb-f1ac-44a6-807a-3f16e00d30e3",
+      "sourceFile": "mindset-patterns.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "mindset-patterns.md",
+      "observation": "Self-applied labels, undeveloped: spiral-and-stack thinking, hyper\nself-awareness, oversharing vs. gatekeeping, inner-world domination,\nvisionary freeze.",
+      "confidence": 0.5
+    },
+    {
+      "id": "af38a465-2660-467c-ab00-ebbde398ceec",
+      "sourceFile": "personality-and-mindset.md",
+      "sourceRef": "callout#2",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "personality-and-mindset.md",
+      "observation": "Healthy coping mechanisms named: reflective journaling, motorcycle rides,\nmusic as emotional outlet. Unhealthy coping named: emotional suppression,\noverthinking in cycles of doubt.",
+      "confidence": 0.7
+    },
+    {
+      "id": "b25c3c5f-7e03-480e-b4f3-5a8154c4a44a",
+      "sourceFile": "personality-and-mindset.md",
+      "sourceRef": "callout#3",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "personality-and-mindset.md",
+      "observation": "Finds small talk draining but tolerates it out of politeness. Reported\netiquette: respects personal space, listens more than speaks, avoids phone\nuse during deep conversation; described body language includes clasping\nhands while thinking and a deep sigh before answering hard questions.",
+      "confidence": 0.6
+    },
+    {
+      "id": "b3da151c-563b-4963-964e-b4db5e76e2bb",
+      "sourceFile": "life-philosophy.md",
+      "sourceRef": "callout#2",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "life-philosophy.md",
+      "observation": "States as operating principle: \"keep your friends for friendship, but work\nwith the skilled and competent\" — draws an explicit line between\nrelationship and collaborator selection. Separately states a hope to\n\"inspire others to think critically and question systems\" as the intended\ncommunity-level impact of his work.",
+      "confidence": 0.6
+    },
+    {
+      "id": "b7776c40-2c92-41ee-af7b-80a6ce31d4ec",
+      "sourceFile": "personality-and-mindset.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "personality-and-mindset.md",
+      "observation": "Primary self-described archetype is \"the Rebel\" (challenges norms, resists\nconformity); secondary is \"the Thinker\" (introspective, analytical).\nSelf-identifies as MBTI type INFP and Enneagram 4w5 (\"the Individualist\") —\ncore fear of living a meaningless life, core desire for freedom and\nself-expression. Self-rated Big Five: high Openness, moderate\nConscientiousness, low Extraversion, moderate Agreeableness, high\nNeuroticism (prone to overthinking and emotional turbulence).",
+      "confidence": 0.8
+    },
+    {
+      "id": "ca323e2a-7a19-4fcf-9349-8d118e92ebcb",
+      "sourceFile": "spirituality.md",
+      "sourceRef": "callout#2",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "spirituality.md",
+      "observation": "Reports feeling closest to God when observing the night sky or the natural\nworld, in moments of solitude and deep thought, and during quiet acts of\nkindness.",
+      "confidence": 0.65
+    },
+    {
+      "id": "e79cbadc-aa29-4a76-89b6-3f3f448d0152",
+      "sourceFile": "spirituality.md",
+      "sourceRef": "callout#3",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "spirituality.md",
+      "observation": "Describes an ongoing, unresolved tension between structured religious\nexpectation and personal freedom/individualism; names overthinking about\nlife's purpose as what makes surrendering to fate (tawakkul) difficult, and\nframes this as something actively being worked on rather than settled.",
+      "confidence": 0.6
+    },
+    {
+      "id": "f4fed490-31e5-4402-b832-dd6eb1b002cb",
+      "sourceFile": "emotional-triggers.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "emotional-triggers.md",
+      "observation": "Named emotional triggers: being ignored or taken lightly; hypocrisy and\nshallow positivity; wasted potential, in self or others; being\nmisunderstood while struggling; injustice and powerlessness.",
+      "confidence": 0.75
+    },
+    {
+      "id": "f65d823b-b781-4452-9228-432371ba6970",
+      "sourceFile": "blindspots.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "blindspots.md",
+      "observation": "Self-identified default response patterns under pressure: carrying too much\nalone rather than asking for help; alternating between wanting to fight the\nworld and withdrawing into silence (\"rage-tender cycle\"); punishing himself\nfor being slow, stuck, or resting (\"productivity guilt\"); preferring depth\nover everything, which leads to avoiding shallow or light-hearted\nengagement (\"control by depth\"); all-or-nothing follow-through — if it\ncan't be done fully, prefers not to start at all.",
+      "confidence": 0.7
+    },
+    {
+      "id": "f76adb70-9dae-4c4b-b3d8-6df4f8e5cb33",
+      "sourceFile": "spirituality.md",
+      "sourceRef": "callout#1",
+      "timestamp": "2025-06-22T00:00:00.000Z",
+      "context": "spirituality.md",
+      "observation": "Religion: Islam. Describes prayer practice as inconsistent but returns to\nit; frames faith as personal reflection rather than rigid routine; values\nthe solitude of late-night prayer (qiyamullail), especially during Ramadan,\nwhich is treated as a period for personal reset.",
+      "confidence": 0.7
+    }
+  ],
+  "parameters": [
+    {
+      "id": "0e1e8f3c-e0f8-49be-a690-a941f06b0e99",
+      "name": "core values",
+      "domain": "Legacy",
+      "evidenceIds": [
+        "a44fab72-ec1d-4988-b12a-3dea4f3ef634"
+      ],
+      "confidence": 0.75,
+      "status": "draft"
+    },
+    {
+      "id": "2e18d58c-d504-4a4d-97c3-e9c2cb282be1",
+      "name": "default stress-response patterns",
+      "domain": "Adaptation",
+      "evidenceIds": [
+        "f65d823b-b781-4452-9228-432371ba6970"
+      ],
+      "pattern": "control-by-depth",
+      "confidence": 0.7,
+      "status": "draft"
+    },
+    {
+      "id": "5d239d88-2cfb-4f39-b4e1-91b5238f6914",
+      "name": "communication and disclosure strategy",
+      "domain": "Strategy",
+      "evidenceIds": [
+        "12fc451a-fb3f-4541-bc25-dbef2dd666d3"
+      ],
+      "pattern": "silence-as-leverage",
+      "confidence": 0.75,
+      "status": "draft"
+    },
+    {
+      "id": "7ae29474-0101-40ee-889e-e55a077ddb66",
+      "name": "cognitive and emotional profile",
+      "domain": "Human",
+      "evidenceIds": [
+        "b7776c40-2c92-41ee-af7b-80a6ce31d4ec",
+        "08ec09a2-fcab-4b25-87b3-3d4fd63e18d1"
+      ],
+      "pattern": "Idealist-analyst",
+      "confidence": 0.7250000000000001,
+      "status": "draft"
+    },
+    {
+      "id": "925ba1ff-2f94-4b05-ab98-4b97e5112e1c",
+      "name": "coping mechanisms and social energy",
+      "domain": "Human",
+      "evidenceIds": [
+        "af38a465-2660-467c-ab00-ebbde398ceec",
+        "b25c3c5f-7e03-480e-b4f3-5a8154c4a44a"
+      ],
+      "pattern": "expressive processing, low tolerance for surface-level interaction",
+      "confidence": 0.6499999999999999,
+      "status": "draft"
+    },
+    {
+      "id": "94dd67e8-a35b-4c3f-9799-7da2246c54b8",
+      "name": "emotional triggers",
+      "domain": "Human",
+      "evidenceIds": [
+        "f4fed490-31e5-4402-b832-dd6eb1b002cb"
+      ],
+      "confidence": 0.75,
+      "status": "draft"
+    },
+    {
+      "id": "a165646e-3471-4ce3-ae2f-c101b2570910",
+      "name": "self-diagnosed thought patterns",
+      "domain": "Human",
+      "evidenceIds": [
+        "ad09c6eb-f1ac-44a6-807a-3f16e00d30e3"
+      ],
+      "confidence": 0.5,
+      "status": "draft"
+    },
+    {
+      "id": "a5e406c9-0f11-4a47-940d-3d3503345e31",
+      "name": "collaboration principle",
+      "domain": "Strategy",
+      "evidenceIds": [
+        "b3da151c-563b-4963-964e-b4db5e76e2bb"
+      ],
+      "confidence": 0.6,
+      "status": "draft"
+    },
+    {
+      "id": "b9fd0434-6f65-45be-9bdd-e8143ce95962",
+      "name": "operating roles",
+      "domain": "Strategy",
+      "evidenceIds": [
+        "221cb006-4f8f-4741-b1ac-4862d12e46ef"
+      ],
+      "pattern": "generalist-strategist",
+      "confidence": 0.6,
+      "status": "draft"
+    },
+    {
+      "id": "f1039c88-58c6-46ab-a570-7709fa65bcdc",
+      "name": "faith-individualism tension response",
+      "domain": "Adaptation",
+      "evidenceIds": [
+        "e79cbadc-aa29-4a76-89b6-3f3f448d0152"
+      ],
+      "confidence": 0.6,
+      "status": "draft"
+    },
+    {
+      "id": "f377a679-8fe1-47e2-bee1-b076fba5705f",
+      "name": "faith practice and spiritual connection",
+      "domain": "Human",
+      "evidenceIds": [
+        "f76adb70-9dae-4c4b-b3d8-6df4f8e5cb33",
+        "ca323e2a-7a19-4fcf-9349-8d118e92ebcb"
+      ],
+      "pattern": "reflective, not ritualistic",
+      "confidence": 0.675,
+      "status": "draft"
+    },
+    {
+      "id": "fc54e1be-16d4-452d-a4fa-bf1cc5951aac",
+      "name": "core operating philosophy",
+      "domain": "Legacy",
+      "evidenceIds": [
+        "4c981187-b634-4059-9807-903ea1b3bf82"
+      ],
+      "pattern": "freedom over external validation",
+      "confidence": 0.8,
+      "status": "draft"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "3b6dd755-c821-45a1-a405-5ee6dd0abd28",
+      "sourceParameterId": "b9fd0434-6f65-45be-9bdd-e8143ce95962",
+      "targetParameterId": "7ae29474-0101-40ee-889e-e55a077ddb66",
+      "relationshipType": "supports",
+      "confidence": 0.6,
+      "verification": "unverified"
+    },
+    {
+      "id": "65f9085f-ffe3-4686-a527-c62316c902e4",
+      "sourceParameterId": "f1039c88-58c6-46ab-a570-7709fa65bcdc",
+      "targetParameterId": "fc54e1be-16d4-452d-a4fa-bf1cc5951aac",
+      "relationshipType": "correlated",
+      "confidence": 0.65,
+      "verification": "unverified"
+    },
+    {
+      "id": "730f690f-23fd-4056-a7c4-b0addc9d0ba3",
+      "sourceParameterId": "925ba1ff-2f94-4b05-ab98-4b97e5112e1c",
+      "targetParameterId": "2e18d58c-d504-4a4d-97c3-e9c2cb282be1",
+      "relationshipType": "correlated",
+      "confidence": 0.6,
+      "verification": "unverified"
+    },
+    {
+      "id": "a07ed3fd-35b7-4120-a03d-10e5d60cab4e",
+      "sourceParameterId": "2e18d58c-d504-4a4d-97c3-e9c2cb282be1",
+      "targetParameterId": "7ae29474-0101-40ee-889e-e55a077ddb66",
+      "relationshipType": "supports",
+      "confidence": 0.7,
+      "verification": "unverified"
+    },
+    {
+      "id": "d9caf1e8-dd17-44c8-8334-dac07c62b9e4",
+      "sourceParameterId": "5d239d88-2cfb-4f39-b4e1-91b5238f6914",
+      "targetParameterId": "fc54e1be-16d4-452d-a4fa-bf1cc5951aac",
+      "relationshipType": "supports",
+      "confidence": 0.65,
+      "verification": "unverified"
+    }
+  ]
+}

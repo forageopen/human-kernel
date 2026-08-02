@@ -28,6 +28,7 @@ export interface RawEvidenceBlock {
   pattern?: string;
   status?: "draft" | "verified" | "disputed";
   observation: string;
+  date?: string; // ISO 8601 - optional override for Evidence.timestamp (see compiler/index.ts)
 }
 
 export interface RawRelationshipBlock {
@@ -130,6 +131,25 @@ export function parseVaultFile(sourceFile: string, text: string): ParseResult {
         continue;
       }
 
+      // Optional explicit date (Post-MVD TODO closed 2026-08-02): lets a vault
+      // note declare when the observation actually happened/was last true,
+      // e.g. date:"2025-06-22" - the real file mtime is a legitimate proxy for
+      // this. Absent -> compiler falls back to pure capture-time, unchanged
+      // from prior behavior. Invalid -> rejected outright, same "never guess"
+      // rule as domain/confidence above, not silently dropped or clamped.
+      let date: string | undefined;
+      if (attrs.date !== undefined) {
+        const parsed = new Date(attrs.date);
+        if (Number.isNaN(parsed.getTime())) {
+          warnings.push({
+            sourceFile, sourceRef,
+            message: `date "${attrs.date}" is not a valid date. Block rejected, not guessed.`,
+          });
+          continue;
+        }
+        date = parsed.toISOString();
+      }
+
       evidence.push({
         sourceFile,
         sourceRef,
@@ -139,6 +159,7 @@ export function parseVaultFile(sourceFile: string, text: string): ParseResult {
         pattern: attrs.pattern,
         status: attrs.status as RawEvidenceBlock["status"],
         observation: body,
+        date,
       });
     } else {
       const relType = VALID_RELATIONSHIP_TYPES.find((t) => t === (attrs.type ?? "").toLowerCase());

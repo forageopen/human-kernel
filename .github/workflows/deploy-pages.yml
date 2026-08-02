@@ -36,6 +36,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Compiles sample-vault/*.md into sample-data/index.json via the real
+      # parseVaultFile -> compile -> serialize pipeline (scripts/build-sample-data.mjs).
+      # Needs dist/ from the build step above. If this fails or warns, the
+      # deploy stops here rather than shipping a stale or broken reference
+      # profile - same "don't deploy something CI wouldn't pass" rule as above.
+      - name: Build sample reference profile
+        run: npm run build-sample-data
+
       # index.html references "dist/main.js" and "styles.css" - paths that are
       # only correct when index.html sits at the repo root next to a dist/
       # subfolder (the local-dev layout). Deploying dist/ itself as the site
@@ -43,12 +51,16 @@ jobs:
       # and 404s the script. Fix: stage a site/ folder that reproduces the
       # repo-root-plus-dist/-subfolder layout exactly, so index.html's
       # existing relative paths stay correct with zero changes to index.html.
-      - name: Assemble static site (site/index.html + site/styles.css + site/dist/**, minus test output)
+      # sample-data/ is included the same way - app.ts's loadSampleIndex()
+      # fetches "sample-data/index.json" relative to index.html, so it needs
+      # to sit at the site root too, not just exist in the repo.
+      - name: Assemble static site (site/index.html + site/styles.css + site/dist/** + site/sample-data/**, minus test output)
         run: |
           find dist -name '*.test.js' -delete
           mkdir -p site
           cp index.html styles.css site/
           cp -r dist site/dist
+          cp -r sample-data site/sample-data
 
       - uses: actions/configure-pages@v5
 

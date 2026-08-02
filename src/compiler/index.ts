@@ -30,10 +30,12 @@ export function compile(
     id: crypto.randomUUID(),
     sourceFile: raw.sourceFile,
     sourceRef: raw.sourceRef,
-    // TODO (Post-MVD): use the vault file's actual mtime, and a real heading-path
-    // for `context` once vault-reader exposes both - not implemented yet, so both
-    // currently fall back to values available at parse time. Flagged, not hidden.
-    timestamp: new Date().toISOString(),
+    // Post-MVD TODO closed (2026-08-02): a block's explicit date:"..." attribute
+    // (evidence-parser/index.ts) is real, author-declared event time - use it
+    // when given. No note has one -> unchanged prior behavior, pure capture-time.
+    // Real heading-path `context` still isn't implemented; that half of the
+    // original TODO remains open, flagged not hidden.
+    timestamp: raw.date ?? new Date().toISOString(),
     context: raw.sourceFile,
     observation: raw.observation,
     confidence: raw.confidence,
