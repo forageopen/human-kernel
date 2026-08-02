@@ -55,11 +55,15 @@ describe("renderEvidenceHeatmap", () => {
   it("renders one cell per day in the given month, plus the correct leading filler cells", () => {
     const monthDate = new Date(2026, 5, 1); // June 2026 - has 30 days
     const wrap = renderEvidenceHeatmap([], monthDate);
-    const dayCells = wrap.querySelectorAll(".hk-heatmap-cell:not(.empty)");
+    // Scoped to .hk-heatmap-grid, not the whole wrap - the Less->More legend
+    // below the grid reuses these same level-N classes on its 5 swatches, so
+    // an unscoped query here would double-count them.
+    const grid = wrap.querySelector(".hk-heatmap-grid") as HTMLElement;
+    const dayCells = grid.querySelectorAll(".hk-heatmap-cell:not(.empty)");
     expect(dayCells.length).toBe(30);
 
     const firstWeekday = new Date(2026, 5, 1).getDay();
-    const fillerCells = wrap.querySelectorAll(".hk-heatmap-cell.empty");
+    const fillerCells = grid.querySelectorAll(".hk-heatmap-cell.empty");
     expect(fillerCells.length).toBe(firstWeekday);
   });
 
@@ -75,9 +79,9 @@ describe("renderEvidenceHeatmap", () => {
     const wrap = renderEvidenceHeatmap(evidence, monthDate);
     const cells = Array.from(wrap.querySelectorAll<HTMLElement>(".hk-heatmap-cell"));
 
-    const day22 = cells.find((c) => c.textContent === "22");
-    const day10 = cells.find((c) => c.textContent === "10");
-    const day1 = cells.find((c) => c.textContent === "1");
+    const day22 = cells.find((c) => c.dataset.day === "22");
+    const day10 = cells.find((c) => c.dataset.day === "10");
+    const day1 = cells.find((c) => c.dataset.day === "1");
 
     expect(day22?.className).toContain("level-4"); // the month's busiest day
     expect(day10?.className).toContain("level-1"); // 1 of 4 -> lowest non-zero level
@@ -86,8 +90,27 @@ describe("renderEvidenceHeatmap", () => {
 
   it("never fabricates a count - a day with zero real Evidence is level-0, not guessed", () => {
     const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 1));
-    const cells = wrap.querySelectorAll(".hk-heatmap-cell:not(.empty)");
+    const grid = wrap.querySelector(".hk-heatmap-grid") as HTMLElement;
+    const cells = grid.querySelectorAll(".hk-heatmap-cell:not(.empty)");
     expect(Array.from(cells).every((c) => c.className.includes("level-0"))).toBe(true);
+  });
+
+  it("is color-only (GitHub-contribution style) - no visible day-number text inside a cell, date is on title/hover instead", () => {
+    const wrap = renderEvidenceHeatmap([ev({ id: "1", timestamp: "2026-01-15T00:00:00.000Z" })], new Date(2026, 0, 1));
+    const grid = wrap.querySelector(".hk-heatmap-grid") as HTMLElement;
+    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".hk-heatmap-cell:not(.empty)"));
+    expect(cells.every((c) => c.textContent === "")).toBe(true);
+    const day15 = cells.find((c) => c.dataset.day === "15");
+    expect(day15?.title).toContain("January 2026 15:");
+    expect(day15?.title).toContain("1 evidence entry");
+  });
+
+  it("renders a Less -> More legend using the same level-N swatch classes as the grid", () => {
+    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 1));
+    const legend = wrap.querySelector(".hk-heatmap-legend");
+    expect(legend?.textContent).toContain("Less");
+    expect(legend?.textContent).toContain("More");
+    expect(legend?.querySelectorAll(".hk-heatmap-cell").length).toBe(5); // level-0..level-4
   });
 });
 

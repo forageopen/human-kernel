@@ -18,6 +18,12 @@
 </head>
 <body>
 
+<!-- Ambient background particles (page chrome, not dashboard data) - fixed,
+     behind everything, pointer-events disabled. Populated by main.ts via
+     src/dashboard/particles.ts. Hidden outright under prefers-reduced-motion
+     (see styles.css). -->
+<div class="hk-particles" id="hk-particles" aria-hidden="true"></div>
+
 <div class="hk-topbar">
   <div>
     <h1>Human Kernel</h1>

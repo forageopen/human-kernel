@@ -2,7 +2,15 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02 (second, third, and fourth passes, same day as v0.1.0-mvd)
+## [Unreleased] - 2026-08-02 (second through fifth passes, same day as v0.1.0-mvd)
+
+### Added (fifth pass - sizing/motion feedback)
+
+- Calendar heatmap now matches GitHub's own contribution graph convention: cells are small, color-only (no visible day-number - the digit was what forced cells to be big enough to read, direct feedback: "too big... don't like square if big like that"), with the exact date/count moved to hover `title` (never lost, just not shouted) and a Less->More legend added below the grid. The card itself now sizes to `fit-content` instead of stretching full-width and leaving a gap ("the right side is kinda empty").
+- Chart cards changed from an auto-fit grid (up to 5-6 across) to a fixed 2-per-row grid, per direct feedback ("make two cards to fill one row so we have visual hierarchy") - each chart gets real visual weight instead of being one of many same-size tiles; canvas height increased to match the wider cards.
+- `src/dashboard/particles.ts` - ambient background particle field (direct request: "background live animation that's not heavy - like moving atoms... asteroids (very small) & glowing slowly but moving fast (smooth)"). ~22 small Ember-Gold glowing dots, pure CSS keyframe animation (transform + opacity only, GPU-composited, no canvas/JS-per-frame loop/animation library), each with its own randomized drift vector and timing so they never move in lockstep. Two independent cadences: fast position drift (4-10s), slower opacity pulse (3-6s) - matching "glowing slowly but moving fast" literally. Fixed, `pointer-events:none`, negative z-index (behind all real content). Hidden outright under `prefers-reduced-motion`.
+
+
 
 ### Added
 

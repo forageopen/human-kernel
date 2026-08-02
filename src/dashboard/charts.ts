@@ -278,11 +278,36 @@ export function renderEvidenceHeatmap(evidence: Evidence[], monthDate: Date = ne
     const intensity = count === 0 ? 0 : Math.min(4, Math.ceil((count / maxCount) * 4));
     const cell = document.createElement("div");
     cell.className = `hk-heatmap-cell level-${intensity}`;
+    cell.dataset.day = String(day);
+    // GitHub-contribution style: color-only intensity, no visible digit inside
+    // the cell (that's what was forcing cells to be big enough to hold a
+    // number - direct feedback: "too big... don't like square if big like
+    // that"). The exact date/count is still available, just on hover/focus
+    // via title, same as GitHub's own graph - never lost, just not shouted.
     cell.title = `${monthLabel} ${day}: ${count} evidence ${count === 1 ? "entry" : "entries"}`;
-    cell.textContent = String(day);
     grid.appendChild(cell);
   }
 
   wrap.appendChild(grid);
+
+  // Less -> More legend, same convention GitHub's own contribution graph
+  // uses, reusing the identical level-N swatch classes (so the legend can
+  // never visually drift out of sync with the grid's own color scale).
+  const legend = document.createElement("div");
+  legend.className = "hk-heatmap-legend";
+  const less = document.createElement("span");
+  less.textContent = "Less";
+  legend.appendChild(less);
+  for (let level = 0; level <= 4; level++) {
+    const swatch = document.createElement("span");
+    swatch.className = `hk-heatmap-cell level-${level}`;
+    swatch.setAttribute("aria-hidden", "true");
+    legend.appendChild(swatch);
+  }
+  const more = document.createElement("span");
+  more.textContent = "More";
+  legend.appendChild(more);
+  wrap.appendChild(legend);
+
   return wrap;
 }

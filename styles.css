@@ -162,31 +162,55 @@ body {
 .hk-overview { margin-bottom: 28px; }
 .hk-overview-heading { margin-top: 6px; }
 
-.hk-heatmap-card { overflow-x: auto; }
-.hk-heatmap-caption { margin-bottom: 14px; }
+/* Shrunk to GitHub-contribution scale (2026-08-02, direct feedback: "too
+   big... don't like square if big like that... right side is kinda empty").
+   Cells no longer hold a visible day-number (see charts.ts - it's on
+   title/hover now, same as GitHub), so they can be genuinely small instead
+   of being sized to fit a digit. The card itself shrinks to fit that small
+   content (`width: fit-content`) instead of stretching the full grid-column
+   width and leaving a visible gap - the emptiness was a card-sizing problem
+   as much as a cell-sizing one. */
+.hk-heatmap-card { overflow-x: auto; width: fit-content; max-width: 100%; }
+.hk-heatmap-caption { margin-bottom: 14px; max-width: 260px; }
 .hk-heatmap-grid {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
-  max-width: 480px;
+  display: grid; grid-template-columns: repeat(7, 13px); gap: 3px;
+  width: max-content;
 }
 .hk-heatmap-dow {
   text-align: center; font-size: 10px; color: var(--stone); font-family: var(--font-mono);
   padding-bottom: 4px; letter-spacing: 0.05em;
 }
 .hk-heatmap-cell {
-  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  border-radius: var(--radius-xs); font-size: 11px; font-family: var(--font-mono); color: var(--text);
+  width: 13px; height: 13px;
+  border-radius: var(--radius-xs);
   background: var(--card-alt); border: 1px solid var(--border-hint);
+  transition: transform var(--duration-short) var(--ease-standard);
 }
 .hk-heatmap-cell.empty { background: transparent; border-color: transparent; }
-.hk-heatmap-cell.level-0 { background: var(--card-alt); color: var(--stone); }
+.hk-heatmap-cell.level-0 { background: var(--card-alt); }
 .hk-heatmap-cell.level-1 { background: rgba(200, 169, 110, 0.2); border-color: rgba(200, 169, 110, 0.2); }
-.hk-heatmap-cell.level-2 { background: rgba(200, 169, 110, 0.42); border-color: rgba(200, 169, 110, 0.42); color: var(--text-strong); }
-.hk-heatmap-cell.level-3 { background: rgba(200, 169, 110, 0.68); border-color: rgba(200, 169, 110, 0.68); color: #1c1c1a; }
-.hk-heatmap-cell.level-4 { background: var(--ember); border-color: var(--ember); color: #1c1c1a; font-weight: 600; }
+.hk-heatmap-cell.level-2 { background: rgba(200, 169, 110, 0.42); border-color: rgba(200, 169, 110, 0.42); }
+.hk-heatmap-cell.level-3 { background: rgba(200, 169, 110, 0.68); border-color: rgba(200, 169, 110, 0.68); }
+.hk-heatmap-cell.level-4 { background: var(--ember); border-color: var(--ember); }
+.hk-heatmap-cell:not(.empty):hover { transform: scale(1.3); }
 
-.hk-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+/* Less -> More legend, GitHub's own convention - reuses the identical
+   level-N swatch classes so it can never visually drift out of sync with
+   the grid's own color scale. */
+.hk-heatmap-legend {
+  display: flex; align-items: center; gap: 4px; margin-top: 12px;
+  font-size: 10px; color: var(--stone); font-family: var(--font-mono);
+}
+
+/* Two-per-row (2026-08-02, direct feedback: "make two cards to fill one row
+   so we have visual hierarchy" - was auto-fit at up to 5-6 across, which
+   made every chart the same small visual weight with no hierarchy). */
+.hk-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+@media (max-width: 640px) {
+  .hk-chart-grid { grid-template-columns: 1fr; }
+}
 .hk-chart-card { margin-bottom: 0; }
-.hk-chart-canvas-wrap { position: relative; height: 220px; }
+.hk-chart-canvas-wrap { position: relative; height: 260px; }
 
 .hk-warn-row {
   display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--crimson);
@@ -300,14 +324,50 @@ body {
   animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both;
 }
 
+/* Ambient background particles (2026-08-02, direct request: "background
+   live animation that's not heavy - like moving atoms... asteroids (very
+   small) & glowing slowly but moving fast (smooth)"). Fixed full-viewport
+   layer, negative z-index so it paints above the body background but below
+   every normal-flow element on the page (.hk-topbar/.hk-page/.hk-footer all
+   have default z-index:auto and need no change to sit above it); disabled
+   entirely under reduced-motion below. Populated by src/dashboard/particles.ts. */
+.hk-particles {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+}
+.hk-particle {
+  position: absolute;
+  left: var(--hk-p-left); top: var(--hk-p-top);
+  width: var(--hk-p-size); height: var(--hk-p-size);
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 6px 1px rgba(200, 169, 110, 0.55);
+  /* Two independent cadences on purpose: drift covers real distance quickly
+     ("moving fast"), glow pulses brightness on its own, slower cycle
+     ("glowing slowly") - deliberately not synced to the same duration. */
+  animation:
+    hk-particle-drift var(--hk-p-drift) ease-in-out var(--hk-p-delay) infinite alternate,
+    hk-particle-glow var(--hk-p-glow) ease-in-out var(--hk-p-delay) infinite alternate;
+}
+@keyframes hk-particle-drift {
+  from { transform: translate(0, 0); }
+  to { transform: translate(var(--hk-p-dx), var(--hk-p-dy)); }
+}
+@keyframes hk-particle-glow {
+  from { opacity: 0.15; }
+  to { opacity: 0.85; }
+}
+
 /* Respect the OS-level motion preference - part of M3's own motion guidance,
    not an afterthought. Collapsing the duration tokens to near-zero mutes
    every transition/animation that references them in one place, rather than
-   repeating an override per selector. */
+   repeating an override per selector. The particle field is hidden outright
+   rather than just slowed - a perpetually drifting full-screen layer is
+   exactly the kind of motion this preference exists to remove. */
 @media (prefers-reduced-motion: reduce) {
   :root { --duration-short: 0.01ms; --duration-medium: 0.01ms; }
   .hk-param-card, .hk-chart-card, .hk-heatmap-card,
   .hk-drawer.active, .hk-lock-toast.active {
     animation: none;
   }
+  .hk-particles { display: none; }
 }
