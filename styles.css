@@ -3,10 +3,20 @@
    ad-hoc green-terminal palette (real gap, caught 2026-08-02 against a
    sibling dashboard-mockup session that had already fixed the same mistake).
    Reuses the layout validated in wireframes/data-states.html and Draft 5
-   (Brief v2 SS9) - dark, mission-control aesthetic, no gamification. */
+   (Brief v2 SS9) - dark, mission-control aesthetic, no gamification.
+
+   Structure/motion layer (2026-08-02, third pass): Material Design 3's
+   published tokens - the 4/8dp spacing scale, shape/corner-radius scale,
+   surface elevation, state-layer opacities, and standard easing/duration -
+   applied natively in plain CSS. Still no Material Web Components, no MUI,
+   no JS framework (that's the standing ADR - see
+   docs/sprint-0-walkthrough-simulated.md). M3 is a design LANGUAGE meant to
+   be reskinned with your own brand color ("Material You"), so this is the
+   intended way to use it: the locked Forage palette below is untouched,
+   only structure/motion is M3-derived. */
 
 :root {
-  /* Locked Forage Deep Minds pairing */
+  /* Locked Forage Deep Minds pairing - do not change on any future UI pass */
   --bg: #1c1c1a;              /* Deep Charcoal - primary dark surface */
   --card: #262624;            /* Near Black - elevated card/surface on dark */
   --card-alt: #2a2a28;        /* Charcoal Mist - nested surface (drawer, toast) */
@@ -23,6 +33,52 @@
   --font-heading: "DM Sans", Arial, sans-serif;
   --font-body: "DM Sans", Helvetica, sans-serif;
   --font-mono: "JetBrains Mono", "Courier New", monospace; /* tags, codes, reference IDs */
+
+  /* --- Material Design 3 structure/motion tokens (Forage-tinted) --- */
+
+  /* 4dp baseline spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* M3 shape scale (corner radius) */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 28px;
+  --radius-full: 999px;
+
+  /* Surface elevation, dark-theme tuned. M3 favors tonal overlays over heavy
+     shadow on dark surfaces; these pair a soft shadow with the tonal step
+     that already exists between --bg / --card / --card-alt rather than
+     fighting it with a light-theme drop-shadow recipe. */
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.22);
+  --elevation-2: 0 2px 4px rgba(0, 0, 0, 0.32), 0 4px 10px rgba(0, 0, 0, 0.26);
+  --elevation-3: 0 4px 8px rgba(0, 0, 0, 0.34), 0 8px 20px rgba(0, 0, 0, 0.28);
+  --elevation-4: 0 6px 14px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.34);
+
+  /* State-layer tints - M3's canonical opacities are ~8% hover / ~12% focus
+     / ~12-16% press, laid over the Ember accent. The 8% hover figure already
+     existed ad hoc on .hk-primary:hover; formalized here and now applied
+     consistently everywhere instead of one-off. */
+  --state-hover: rgba(200, 169, 110, 0.08);
+  --state-focus: rgba(200, 169, 110, 0.12);
+  --state-press: rgba(200, 169, 110, 0.16);
+
+  /* M3 standard easing, plus short/medium durations for micro-interactions
+     and entrances respectively. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --duration-short: 150ms;
+  --duration-medium: 300ms;
 }
 * { box-sizing: border-box; }
 body {
@@ -30,12 +86,12 @@ body {
   background: var(--bg);
   color: var(--text); font-family: var(--font-body);
 }
-.hk-topbar { padding: 18px 24px; border-bottom: 1px solid var(--border-hint); }
+.hk-topbar { padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--border-hint); }
 .hk-topbar h1 {
   margin: 0; font-size: 40px; font-weight: 400; font-family: var(--font-display); color: var(--ember);
 }
 .hk-sub { color: var(--stone); font-size: 12px; font-family: var(--font-mono); }
-.hk-page { padding: 18px 24px 40px; position: relative; min-height: 60vh; }
+.hk-page { padding: var(--space-5) var(--space-6) var(--space-10); position: relative; min-height: 60vh; }
 
 .hk-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -46,10 +102,30 @@ body {
 .hk-muted { color: var(--stone); font-size: 12.5px; max-width: 420px; font-family: var(--font-body); }
 
 .hk-primary {
+  position: relative; overflow: hidden;
   background: transparent; border: 1px solid var(--ember); color: var(--ember);
-  padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: var(--font-heading);
+  padding: 10px var(--space-4); border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 13px; font-family: var(--font-heading);
+  transition: background-color var(--duration-short) var(--ease-standard),
+              box-shadow var(--duration-short) var(--ease-standard),
+              transform var(--duration-short) var(--ease-standard);
 }
-.hk-primary:hover { background: rgba(200, 169, 110, 0.08); }
+.hk-primary:hover { background: var(--state-hover); }
+.hk-primary:active { transform: scale(0.98); background: var(--state-press); }
+.hk-primary:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--ember);
+}
+/* Center-expanding press "ripple" - a pure-CSS approximation of M3's ripple
+   (no JS click-position tracking, so it expands from the button's center
+   rather than the pointer). Honest, low-cost nod to the real thing given
+   the no-framework/no-extra-JS constraint. */
+.hk-primary::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle, var(--state-press) 0%, transparent 70%);
+  opacity: 0; transform: scale(0.4);
+  transition: opacity var(--duration-medium) var(--ease-standard), transform var(--duration-medium) var(--ease-standard);
+}
+.hk-primary:active::after { opacity: 1; transform: scale(1.3); transition-duration: 60ms; }
 .hk-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 
 /* Source banner: says whose data is on screen, offers the one alternative
@@ -57,21 +133,25 @@ body {
    never the primary thing the page asks you to do. */
 .hk-source-banner {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
-  padding: 10px 16px; margin-bottom: 14px; border-radius: 10px;
+  padding: 10px var(--space-4); margin-bottom: 14px; border-radius: var(--radius-md);
   background: rgba(200, 169, 110, 0.06); border: 1px solid var(--border-hint);
   font-size: 12px; color: var(--stone); font-family: var(--font-body);
 }
 .hk-link-btn {
+  position: relative;
   background: none; border: none; color: var(--ember); cursor: pointer; font-size: 12px;
   font-family: var(--font-heading); text-decoration: underline; white-space: nowrap; padding: 0;
+  transition: color var(--duration-short) var(--ease-standard);
 }
 .hk-link-btn:hover { color: var(--text-strong); }
+.hk-link-btn:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; border-radius: var(--radius-xs); }
 
 .hk-card {
   background: var(--card); border: 1px solid var(--border-hint);
-  border-radius: 14px; padding: 18px; margin-bottom: 16px;
+  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
+  box-shadow: var(--elevation-1);
 }
-.hk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.hk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); }
 .hk-label {
   font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stone);
   margin-bottom: 12px; font-family: var(--font-mono);
@@ -94,7 +174,7 @@ body {
 }
 .hk-heatmap-cell {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  border-radius: 6px; font-size: 11px; font-family: var(--font-mono); color: var(--text);
+  border-radius: var(--radius-xs); font-size: 11px; font-family: var(--font-mono); color: var(--text);
   background: var(--card-alt); border: 1px solid var(--border-hint);
 }
 .hk-heatmap-cell.empty { background: transparent; border-color: transparent; }
@@ -104,13 +184,13 @@ body {
 .hk-heatmap-cell.level-3 { background: rgba(200, 169, 110, 0.68); border-color: rgba(200, 169, 110, 0.68); color: #1c1c1a; }
 .hk-heatmap-cell.level-4 { background: var(--ember); border-color: var(--ember); color: #1c1c1a; font-weight: 600; }
 
-.hk-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+.hk-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
 .hk-chart-card { margin-bottom: 0; }
 .hk-chart-canvas-wrap { position: relative; height: 220px; }
 
 .hk-warn-row {
   display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--crimson);
-  border-radius: 8px; background: rgba(193, 40, 107, 0.08); margin-bottom: 8px; font-size: 12.5px;
+  border-radius: var(--radius-sm); background: rgba(193, 40, 107, 0.08); margin-bottom: 8px; font-size: 12.5px;
   font-family: var(--font-body);
 }
 .hk-tag {
@@ -118,15 +198,28 @@ body {
   text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.08em;
 }
 
+/* Parameter cards are the one real interactive "surface" in the grid (click
+   or Enter/Space opens the evidence drawer - see render.ts's onActivate) -
+   the only place a hover-lift + press + focus-ring set earns its keep;
+   everything else in .hk-card is static and only gets resting elevation. */
 .hk-param-card {
-  border: 1px solid var(--border-hint); border-radius: 10px; padding: 14px; margin-bottom: 10px; cursor: pointer;
-  background: var(--card-alt);
+  border: 1px solid var(--border-hint); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
+  margin-bottom: 10px; cursor: pointer;
+  background: var(--card-alt); box-shadow: var(--elevation-1);
+  transition: transform var(--duration-short) var(--ease-standard),
+              box-shadow var(--duration-short) var(--ease-standard),
+              border-color var(--duration-short) var(--ease-standard);
+}
+.hk-param-card:hover { transform: translateY(-2px); box-shadow: var(--elevation-2); border-color: rgba(200, 169, 110, 0.3); }
+.hk-param-card:active { transform: translateY(0); box-shadow: var(--elevation-1); }
+.hk-param-card:focus-visible {
+  outline: none; box-shadow: var(--elevation-2), 0 0 0 3px var(--state-focus), 0 0 0 1px var(--ember);
 }
 .hk-param-card.disputed { border-color: var(--crimson); background: rgba(193, 40, 107, 0.06); }
 .hk-param-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .hk-param-title b { font-family: var(--font-heading); font-weight: 600; font-size: 15px; color: var(--ember); }
 .hk-status-pill {
-  font-size: 9.5px; padding: 2px 8px; border-radius: 12px; border: 1px solid var(--border-hint);
+  font-size: 9.5px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-hint);
   font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
 }
 .hk-status-pill.disputed { border-color: var(--crimson); color: var(--crimson); }
@@ -136,11 +229,17 @@ body {
 
 .hk-drawer {
   position: fixed; right: 25px; bottom: 25px; width: 380px; max-height: 60vh; overflow-y: auto;
-  background: var(--card-alt); border: 1px solid var(--ember); border-radius: 14px; padding: 20px;
-  display: none; box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); z-index: 99;
+  background: var(--card-alt); border: 1px solid var(--ember); border-radius: var(--radius-lg); padding: var(--space-5);
+  display: none; box-shadow: var(--elevation-4); z-index: 99;
 }
-.hk-drawer.active { display: block; }
-.hk-close { position: absolute; top: 14px; right: 18px; cursor: pointer; color: var(--crimson); }
+.hk-drawer.active { display: block; animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both; }
+.hk-close {
+  position: absolute; top: 14px; right: 18px; cursor: pointer; color: var(--crimson);
+  border-radius: var(--radius-xs);
+  transition: transform var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
+}
+.hk-close:hover { transform: scale(1.15); }
+.hk-close:focus-visible { outline: 2px solid var(--crimson); outline-offset: 2px; }
 .hk-evidence-row {
   display: flex; flex-direction: column; gap: 4px; padding: 10px 0;
   border-bottom: 1px solid var(--border-hint); font-size: 12px; font-family: var(--font-body);
@@ -153,21 +252,25 @@ body {
    vault folder." Same position/shape the evidence drawer uses. */
 .hk-lock-toast {
   position: fixed; right: 25px; bottom: 25px; max-width: 340px;
-  background: var(--card-alt); border: 1px solid var(--crimson); border-radius: 12px;
-  padding: 16px 20px; display: none; box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); z-index: 99;
+  background: var(--card-alt); border: 1px solid var(--crimson); border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5); display: none; box-shadow: var(--elevation-4); z-index: 99;
   font-size: 12.5px; color: var(--text);
 }
-.hk-lock-toast.active { display: block; }
+.hk-lock-toast.active { display: block; animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both; }
 .hk-lock-toast-btn {
+  position: relative; overflow: hidden;
   display: block; margin-top: 10px; background: transparent; border: 1px solid var(--ember);
-  color: var(--ember); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11.5px;
+  color: var(--ember); padding: 6px var(--space-3); border-radius: var(--radius-sm); cursor: pointer; font-size: 11.5px;
   font-family: var(--font-heading);
+  transition: background-color var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
-.hk-lock-toast-btn:hover { background: rgba(200, 169, 110, 0.08); }
+.hk-lock-toast-btn:hover { background: var(--state-hover); }
+.hk-lock-toast-btn:active { transform: scale(0.98); }
+.hk-lock-toast-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--ember); }
 
 .hk-footer {
-  text-align: center; padding: 18px 24px 28px; color: var(--stone); font-size: 11.5px;
-  border-top: 1px solid var(--border-hint); margin-top: 20px; font-family: var(--font-mono);
+  text-align: center; padding: var(--space-5) var(--space-6) var(--space-7); color: var(--stone); font-size: 11.5px;
+  border-top: 1px solid var(--border-hint); margin-top: var(--space-5); font-family: var(--font-mono);
 }
 .hk-footer a { color: var(--ember); text-decoration: none; }
 .hk-footer a:hover { text-decoration: underline; }
@@ -178,4 +281,33 @@ body {
 .hk-clock {
   margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--stone);
   font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+
+/* Entrance motion: a quick, uniform fade + rise as content is inserted.
+   render.ts rebuilds its subtree from scratch on every call (view switch,
+   rescan, initial load), so this plays once per fresh render - reads as
+   "content refreshed," not a per-card stagger gimmick. Deliberately uses the
+   standalone `translate` property (not `transform`) so it never fights the
+   `transform`-based hover-lift/press-scale rules above: `translate` and
+   `transform` compose instead of overriding each other in the cascade. M3's
+   emphasized-decelerate curve is built for exactly this - elements arriving
+   at rest quickly, not bouncing. */
+@keyframes hk-rise-in {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+.hk-param-card, .hk-chart-card, .hk-heatmap-card {
+  animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both;
+}
+
+/* Respect the OS-level motion preference - part of M3's own motion guidance,
+   not an afterthought. Collapsing the duration tokens to near-zero mutes
+   every transition/animation that references them in one place, rather than
+   repeating an override per selector. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-short: 0.01ms; --duration-medium: 0.01ms; }
+  .hk-param-card, .hk-chart-card, .hk-heatmap-card,
+  .hk-drawer.active, .hk-lock-toast.active {
+    animation: none;
+  }
 }

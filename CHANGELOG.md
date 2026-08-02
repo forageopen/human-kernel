@@ -2,7 +2,7 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02 (second and third passes, same day as v0.1.0-mvd)
+## [Unreleased] - 2026-08-02 (second, third, and fourth passes, same day as v0.1.0-mvd)
 
 ### Added
 
@@ -10,8 +10,10 @@ Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keep
 - Reference profile is Adam Rosman's own vault content — real, not synthetic — redacted and corrected per his own commissioned `OPEN_SOURCE_AUDIT.md` (see `sample-vault/README.md` for exactly what was excluded/fixed and why). Compiled via the real `parseVaultFile -> compile -> serialize` pipeline (`scripts/build-sample-data.mjs`), never hand-written JSON.
 - Evidence blocks may now carry an optional `date:"..."` attribute, used as `Evidence.timestamp` when present (closes a documented Post-MVD TODO using real vault file mtimes).
 - `src/dashboard/charts.ts` — GitHub-style calendar heatmap (evidence density per day, defaults to the month with the most real evidence via `monthWithMostEvidence`, not a hardcoded "today") plus 6 Chart.js cards (domain count, confidence histogram, status donut, relationship-type breakdown, source-file breakdown, domain-confidence radar), all traced to real schema fields against the datavizproject.com taxonomy.
-- `src/dashboard/clock.ts` — live footer clock, Asia/Kuala_Lumpur, text-only ("Month day, Q#, year · HH:MM:SS"), ticking every second. The one element on the page that visibly moves on its own, per direct request once a live-dashboard direction was confirmed.
+- `src/dashboard/clock.ts` — live footer clock, Asia/Kuala_Lumpur, text-only ("Month day, Q#, year · h:mm:ss AM/PM", 12-hour), ticking every second. The one element on the page that visibly moves on its own, per direct request once a live-dashboard direction was confirmed.
 - `.github/workflows/deploy-pages.yml` — now also builds and ships `sample-data/` to the live site (previously would have silently fallen back to the empty state).
+- **Material Design 3 structure/motion tokens applied to `styles.css`** (fourth pass, direct instruction to use material.io as the polish reference instead of the previously-explored animate-ui.com): a 4/8dp spacing scale, M3 shape/corner-radius scale, dark-theme-tuned elevation levels, state-layer hover/focus/press opacities, and standard easing/duration tokens — layered natively onto the locked Forage Deep Minds palette (untouched). Cards now carry resting elevation; the clickable Parameter card gets a hover-lift + press + focus ring; buttons get a center-expanding pure-CSS press "ripple" (no click-position JS, an honest approximation); the drawer/toast and Parameter/chart/heatmap cards get a quick fade+rise entrance on render using the standalone `translate` property specifically so it never fights the `transform`-based hover/press rules. Respects `prefers-reduced-motion`.
+- Keyboard accessibility fix alongside the above: the Parameter card and both close ("×") controls were plain `click`-only elements with no way to reach or activate them from a keyboard. Now `tabIndex=0` + `role="button"` + `aria-label`, activated by click **or** Enter/Space (`render.ts`'s new `onActivate` helper). Material's state-layer model assumes a real focus state exists; a focus ring with nothing behind it would have been decorative only, so this was fixed alongside the CSS, not deferred.
 
 ### Removed
 
@@ -21,6 +23,7 @@ Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keep
 ### Fixed
 
 - Corrected a real error surfaced by the source audit: the vault listed Ni-Fe-Ti-Se as the INFP cognitive-function stack — that's the INFJ stack (INFP is Fi-Ne-Si-Te). The compiled sample states the self-identified MBTI/Enneagram type only, without asserting the wrong stack as fact.
+- Clock switched from 24-hour to 12-hour display (`hourCycle:"h12"`, with `dayPeriod` AM/PM) per direct request.
 
 ### Verified live (not just unit-tested)
 

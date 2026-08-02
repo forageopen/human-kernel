@@ -13,6 +13,8 @@ Wired and unit-tested as of this commit — read the honest version of that clai
 
 **Immersive/Inspect removed (2026-08-02, same day it shipped):** the mode toggle, `DashboardMode`, the Immersive lock prompt, and the `hk-immersive` scroll-lock class are gone — see `docs/agile-backlog.md` story 3.1's correction note for why (the overview section doesn't fit one viewport, and the scroll lock was already only partially effective before that). Scrolling is always on; clicking a Parameter card always opens the evidence drawer, no mode gating.
 
+**Material Design 3 structure/motion + keyboard accessibility (2026-08-02, fourth pass):** `styles.css` now carries an M3-derived token layer (spacing, shape/radius, elevation, state-layer opacities, standard easing/duration) on top of the still-locked Forage Deep Minds palette — no Material Web Components, no framework, same ADR as ever. The Parameter card and the two "×" close controls were `click`-only `div`/`span` elements with no keyboard path; `render.ts` now gives them `tabIndex`/`role="button"`/`aria-label` and a shared `onActivate` helper so Enter/Space work too — added because a focus-ring with nothing behind it would have been decorative, not because it was asked for separately.
+
 ## What's NOT real yet
 
 - **No manual click-through of the File System Access vault-picker flow has been done** — a real folder, picked by a real person, in Chrome/Edge/Brave. That specific path is still "wired and passes unit tests with fakes," not confirmed end to end.

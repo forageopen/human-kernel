@@ -29,6 +29,21 @@ import {
  * state, not canonical data. */
 export type ViewSource = "sample" | "own-vault";
 
+/** Wires both click and keyboard (Enter/Space) activation onto an element in
+ * one place - Material's state-layer model (hover/focus/press) assumes
+ * every interactive surface is actually keyboard-operable, which a bare
+ * `div` + click listener is not. Used for the Parameter cards and the
+ * close ("x") controls, none of which are real `<button>` elements. */
+function onActivate(el: HTMLElement, handler: () => void): void {
+  el.addEventListener("click", handler);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handler();
+    }
+  });
+}
+
 export function renderUnsupportedBrowser(root: HTMLElement): void {
   root.innerHTML = "";
   const box = document.createElement("div");
@@ -77,7 +92,10 @@ export function renderNotice(root: HTMLElement, message: string): void {
   const closeBtn = document.createElement("span");
   closeBtn.className = "hk-close";
   closeBtn.textContent = "×";
-  closeBtn.addEventListener("click", () => toast?.classList.remove("active"));
+  closeBtn.tabIndex = 0;
+  closeBtn.setAttribute("role", "button");
+  closeBtn.setAttribute("aria-label", "Dismiss");
+  onActivate(closeBtn, () => toast?.classList.remove("active"));
   toast.appendChild(closeBtn);
   toast.classList.add("active");
 }
@@ -102,6 +120,9 @@ function renderParameterCard(param: Parameter, onOpen: (param: Parameter) => voi
   const card = document.createElement("div");
   card.className = "hk-param-card" + (param.status === "disputed" ? " disputed" : "");
   card.dataset.parameterId = param.id;
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", `Inspect evidence for ${param.name}`);
 
   const title = document.createElement("div");
   title.className = "hk-param-title";
@@ -113,7 +134,7 @@ function renderParameterCard(param: Parameter, onOpen: (param: Parameter) => voi
   conf.textContent = `Confidence ${param.confidence.toFixed(2)} — ${param.evidenceIds.length} linked evidence. Click to inspect.`;
   card.appendChild(conf);
 
-  card.addEventListener("click", () => onOpen(param));
+  onActivate(card, () => onOpen(param));
   return card;
 }
 
@@ -319,7 +340,10 @@ export function renderDrawer(
   const closeBtn = document.createElement("span");
   closeBtn.className = "hk-close";
   closeBtn.textContent = "×";
-  closeBtn.addEventListener("click", onClose);
+  closeBtn.tabIndex = 0;
+  closeBtn.setAttribute("role", "button");
+  closeBtn.setAttribute("aria-label", "Close evidence drawer");
+  onActivate(closeBtn, onClose);
   drawer.appendChild(closeBtn);
 
   drawer.classList.add("active");

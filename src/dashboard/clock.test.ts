@@ -4,15 +4,15 @@ import { formatKlDateTime, startLiveClock } from "./clock.js";
 
 describe("formatKlDateTime", () => {
   it("converts a UTC instant to Asia/Kuala_Lumpur (UTC+8), not the test machine's local timezone", () => {
-    // 2026-01-15T00:30:00Z + 8h = 2026-01-15 08:30:00 in KL.
-    expect(formatKlDateTime(new Date("2026-01-15T00:30:00.000Z"))).toBe("January 15, Q1, 2026 · 08:30:00");
+    // 2026-01-15T00:30:00Z + 8h = 2026-01-15 08:30:00 in KL = 8:30:00 AM.
+    expect(formatKlDateTime(new Date("2026-01-15T00:30:00.000Z"))).toBe("January 15, Q1, 2026 · 8:30:00 AM");
   });
 
   it("rolls over to the next KL calendar day when UTC+8 crosses midnight", () => {
     // 2026-01-15T20:00:00Z + 8h = 2026-01-16 04:00:00 in KL - a different day
     // from the UTC date, which is exactly the bug a naive local-Date version
     // of this would get wrong for anyone not already in +8.
-    expect(formatKlDateTime(new Date("2026-01-15T20:00:00.000Z"))).toBe("January 16, Q1, 2026 · 04:00:00");
+    expect(formatKlDateTime(new Date("2026-01-15T20:00:00.000Z"))).toBe("January 16, Q1, 2026 · 4:00:00 AM");
   });
 
   it("computes the correct quarter at each quarter boundary", () => {
@@ -28,10 +28,15 @@ describe("formatKlDateTime", () => {
     expect(formatKlDateTime(new Date("2026-12-31T04:00:00.000Z"))).toContain(", Q4, ");
   });
 
-  it("never shows a bare 24 for midnight hour (hourCycle h23, not hour12:false)", () => {
+  it("shows midnight as 12 AM, not 0 AM (hourCycle h12, not hour12:true)", () => {
     // 2026-08-01T16:00:00Z + 8h = 2026-08-02 00:00:00 in KL - the exact
-    // instant some Intl configurations mis-render as "24:00:00".
-    expect(formatKlDateTime(new Date("2026-08-01T16:00:00.000Z"))).toBe("August 2, Q3, 2026 · 00:00:00");
+    // instant a naive 12-hour formatter could render as "0:00:00 AM".
+    expect(formatKlDateTime(new Date("2026-08-01T16:00:00.000Z"))).toBe("August 2, Q3, 2026 · 12:00:00 AM");
+  });
+
+  it("shows noon as 12 PM, not 0 PM or 12 AM", () => {
+    // 2026-08-02T04:00:00Z + 8h = 2026-08-02 12:00:00 in KL.
+    expect(formatKlDateTime(new Date("2026-08-02T04:00:00.000Z"))).toBe("August 2, Q3, 2026 · 12:00:00 PM");
   });
 });
 
@@ -42,10 +47,10 @@ describe("startLiveClock", () => {
 
   it("sets the initial text immediately, without waiting for the first tick", () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-02T04:00:00.000Z")); // 2026-08-02 12:00:00 KL
+    vi.setSystemTime(new Date("2026-08-02T04:00:00.000Z")); // 2026-08-02 12:00:00 PM KL
     const el = document.createElement("div");
     startLiveClock(el);
-    expect(el.textContent).toBe("August 2, Q3, 2026 · 12:00:00");
+    expect(el.textContent).toBe("August 2, Q3, 2026 · 12:00:00 PM");
   });
 
   it("updates every interval tick", () => {
@@ -57,7 +62,7 @@ describe("startLiveClock", () => {
     // Fake timers advance the mocked clock itself - no separate setSystemTime
     // call needed (that would double-advance: once manually, once via this).
     vi.advanceTimersByTime(1000);
-    expect(el.textContent).toBe("August 2, Q3, 2026 · 12:00:01");
+    expect(el.textContent).toBe("August 2, Q3, 2026 · 12:00:01 PM");
   });
 
   it("the returned stop function halts further ticks", () => {
@@ -68,6 +73,6 @@ describe("startLiveClock", () => {
     stop();
 
     vi.advanceTimersByTime(5000);
-    expect(el.textContent).toBe("August 2, Q3, 2026 · 12:00:00"); // unchanged
+    expect(el.textContent).toBe("August 2, Q3, 2026 · 12:00:00 PM"); // unchanged
   });
 });

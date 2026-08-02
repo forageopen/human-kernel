@@ -18,20 +18,21 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-/** "Month day, Q#, year · HH:MM:SS" in Asia/Kuala_Lumpur, computed from the
- * given instant - not from the caller's local clock. hourCycle:"h23" (not
- * hour12:false) avoids a real Intl quirk where some engines format midnight
- * as "24:00" instead of "00:00" under hour12:false. */
+/** "Month day, Q#, year · H:MM:SS AM/PM" in Asia/Kuala_Lumpur, computed from
+ * the given instant - not from the caller's local clock. hourCycle:"h12"
+ * (not hour12:true) is the explicit, unambiguous way to ask for a 12-hour
+ * clock that renders midnight/noon as 12, not 0 - the dayPeriod part
+ * (AM/PM) comes along automatically once hourCycle is h11/h12. */
 export function formatKlDateTime(date: Date): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: KL_TIMEZONE,
     year: "numeric",
     month: "numeric",
     day: "numeric",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
-    hourCycle: "h23",
+    hourCycle: "h12",
   }).formatToParts(date);
 
   const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === type)?.value ?? "";
@@ -42,11 +43,12 @@ export function formatKlDateTime(date: Date): string {
   const hour = get("hour");
   const minute = get("minute");
   const second = get("second");
+  const dayPeriod = get("dayPeriod");
 
   const monthName = MONTH_NAMES[monthNum - 1] ?? "";
   const quarter = Math.min(4, Math.max(1, Math.ceil(monthNum / 3)));
 
-  return `${monthName} ${day}, Q${quarter}, ${year} · ${hour}:${minute}:${second}`;
+  return `${monthName} ${day}, Q${quarter}, ${year} · ${hour}:${minute}:${second} ${dayPeriod}`;
 }
 
 /** Starts the ticking clock on the given element and returns a stop function.

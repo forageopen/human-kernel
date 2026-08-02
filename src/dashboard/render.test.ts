@@ -88,6 +88,16 @@ describe("renderNotice", () => {
     root.querySelector<HTMLElement>(".hk-lock-toast .hk-close")?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(root.querySelector(".hk-lock-toast")?.classList.contains("active")).toBe(false);
   });
+
+  it("its close control is keyboard-focusable and dismisses on Enter, not just click", () => {
+    const root = document.createElement("div");
+    renderNotice(root, "test message");
+    const closeBtn = root.querySelector<HTMLElement>(".hk-lock-toast .hk-close");
+    expect(closeBtn?.tabIndex).toBe(0);
+    expect(closeBtn?.getAttribute("role")).toBe("button");
+    closeBtn?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(root.querySelector(".hk-lock-toast")?.classList.contains("active")).toBe(false);
+  });
 });
 
 describe("renderDashboard", () => {
@@ -105,6 +115,23 @@ describe("renderDashboard", () => {
     expect(cards.length).toBe(1);
     cards[0]?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(callbacks.onOpenParameter).toHaveBeenCalledWith(index.parameters[0]);
+  });
+
+  it("parameter cards are keyboard-focusable and open on Enter/Space, not click-only", () => {
+    const root = document.createElement("div");
+    const index = makeIndex();
+    const callbacks = makeCallbacks();
+    renderDashboard(root, index, [], "own-vault", callbacks);
+
+    const card = root.querySelector<HTMLElement>(".hk-param-card");
+    expect(card?.tabIndex).toBe(0);
+    expect(card?.getAttribute("role")).toBe("button");
+
+    card?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(callbacks.onOpenParameter).toHaveBeenCalledWith(index.parameters[0]);
+
+    card?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    expect(callbacks.onOpenParameter).toHaveBeenCalledTimes(2);
   });
 
   it("renders one warning row per warning, never silently dropping any", () => {
