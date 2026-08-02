@@ -269,23 +269,21 @@ body {
 }
 .hk-prayer-note { margin-top: var(--space-3); font-size: 11px; color: var(--stone); line-height: 1.6; }
 
-/* ---------- Time window / best-time-for (placeholder content, real motion) ---------- */
-.hk-window-list { display: flex; flex-direction: column; gap: 6px; }
+/* ---------- Time window / best-time-for (real content: Adam's Adaptive
+   Daily OS, Six-Window ROI Map) ---------- */
+.hk-window-list { display: flex; flex-direction: column; gap: 8px; }
 .hk-window-row {
-  display: flex; flex-direction: column; gap: 2px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;
   border-radius: var(--radius-sm); border: 1px solid transparent; font-size: 12px;
   transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard);
 }
 .hk-window-row.current { background: var(--state-hover); border-color: var(--border-hint); }
 .hk-window-row.current .hk-window-name { color: var(--accent-text); }
+.hk-window-row-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .hk-window-name { font-family: var(--font-heading); font-weight: 600; color: var(--text-strong); }
-.hk-window-range { font-family: var(--font-mono); font-size: 10.5px; color: var(--stone); }
-.hk-window-suggestion { font-size: 11.5px; color: var(--text); }
-.hk-placeholder-flag {
-  display: inline-block; margin-top: var(--space-3); font-size: 10px; letter-spacing: 0.05em;
-  color: var(--crimson); border: 1px dashed rgba(193, 40, 107, 0.4); border-radius: var(--radius-sm);
-  padding: 6px 10px; font-family: var(--font-mono); line-height: 1.5;
-}
+.hk-window-range { font-family: var(--font-mono); font-size: 10.5px; color: var(--stone); flex-shrink: 0; }
+.hk-window-suggestion { font-size: 11.5px; color: var(--text); line-height: 1.55; }
+.hk-window-suggestion b { color: var(--text-strong); font-family: var(--font-heading); }
 
 /* ---------- Notepad ---------- */
 .hk-notepad-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-3); }

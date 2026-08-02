@@ -8,9 +8,14 @@ describe("currentWindow", () => {
     expect(currentWindow(now).name).toBe("Morning");
   });
 
-  it("picks Night for 10pm KL", () => {
+  it("picks Evening for 10pm KL", () => {
     const now = new Date("2026-08-02T14:00:00.000Z"); // 10pm Aug 2 KL
-    expect(currentWindow(now).name).toBe("Night");
+    expect(currentWindow(now).name).toBe("Evening");
+  });
+
+  it("picks Early Afternoon for 3pm KL - the source doc's own noon-3/4-6 boundary gap resolves here, not left uncovered", () => {
+    const now = new Date("2026-08-02T07:00:00.000Z"); // 3pm Aug 2 KL
+    expect(currentWindow(now).name).toBe("Early Afternoon");
   });
 
   it("every hour of the day maps to exactly one defined window - no gaps", () => {
@@ -25,11 +30,13 @@ describe("currentWindow", () => {
 });
 
 describe("renderTimeWindowCard", () => {
-  it("marks exactly one window as current and flags the content as illustrative", () => {
-    const now = new Date("2026-08-01T23:00:00.000Z");
+  it("marks exactly one window as current and shows its real best-for text, not a placeholder", () => {
+    const now = new Date("2026-08-01T23:00:00.000Z"); // Morning
     const el = renderTimeWindowCard(now);
     expect(el.querySelectorAll(".hk-window-row.current").length).toBe(1);
-    expect(el.textContent).toMatch(/illustrative/i);
+    expect(el.textContent).not.toMatch(/illustrative/i);
+    expect(el.querySelector(".hk-placeholder-flag")).toBeNull();
+    expect(el.textContent).toContain(WINDOWS.find((w) => w.name === "Morning")?.bestFor);
   });
 
   it("renders one row per defined window", () => {
@@ -39,10 +46,18 @@ describe("renderTimeWindowCard", () => {
 });
 
 describe("renderBestTimeForCard", () => {
-  it("names the current window and flags the suggestion as illustrative", () => {
+  it("names the current window and shows its real best-for/poor-for text, not a placeholder", () => {
     const now = new Date("2026-08-01T23:00:00.000Z"); // Morning
     const el = renderBestTimeForCard(now);
+    const morning = WINDOWS.find((w) => w.name === "Morning")!;
     expect(el.textContent).toContain("Morning");
-    expect(el.textContent).toMatch(/illustrative/i);
+    expect(el.textContent).toContain(morning.bestFor);
+    expect(el.textContent).toContain(morning.poorFor);
+    expect(el.textContent).not.toMatch(/illustrative/i);
+  });
+
+  it("cites the Adaptive Daily OS as the source, since this is now real content from it", () => {
+    const el = renderBestTimeForCard(new Date("2026-08-01T23:00:00.000Z"));
+    expect(el.textContent).toMatch(/adaptive daily os/i);
   });
 });

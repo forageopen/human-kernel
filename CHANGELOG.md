@@ -2,7 +2,15 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02 (second through sixth passes, same day as v0.1.0-mvd)
+## [Unreleased] - 2026-08-02 (second through seventh passes, same day as v0.1.0-mvd)
+
+### Added (seventh pass - real Adaptive Daily OS content)
+
+Adam supplied `Adaptive-Daily-OS-Three-Layer-Model.md` after the sixth pass shipped. `src/dashboard/time-window.ts`'s `WINDOWS` array is now that document's Layer 2 ("Six-Window ROI Map") close to verbatim - each window's real "best for" and "poor for" text - replacing the generic illustrative placeholder from a few hours earlier the same day. The `.hk-placeholder-flag` UI note and its CSS are gone along with it, since this is no longer a placeholder. `renderBestTimeForCard` now shows both best-for and poor-for for the current window, with a source line ("From Adam's Adaptive Daily OS - Six-Window ROI Map").
+
+Two things from that same document are deliberately still not wired in: Layer 3 (a "Cognitive Cue System" - Mind-work/Hand-work currents, switched on a mood cue rather than a clock, plus a 3-question retrospective test for logging unplanned activity) is real and richer than either card actually requested - it's a mode-switch signal, not an hour range - so it's sitting unused rather than force-fit; worth its own card later. Layer 1 (the hour-by-hour "Ideal Visualized Routine") isn't even fully in this document - it points to a separate file, `24H-Adaptive-Daily-OS-v2.md`, not supplied either.
+
+One interpretive call, stated rather than hidden: the source text reads "Early afternoon (noon-3 PM)" then "Late afternoon (4-6 PM)," leaving 3-4 PM uncovered by either window as literally written. Read as loose/rounded hour-labels, not a deliberate gap - Early Afternoon's range extends to 4 PM so all 24 hours resolve to one window, same as before.
 
 ### Added (sixth pass - full widget-canvas rebuild)
 
