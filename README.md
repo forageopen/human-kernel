@@ -1,12 +1,14 @@
 # Human Kernel
 
+[![CI](https://github.com/forageopen/human-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/forageopen/human-kernel/actions/workflows/ci.yml)
+
 Browser-native, local-first knowledge environment that compiles a person's own notes into an evidence-linked model of their behavioral patterns — visualized as a dashboard, not asserted as a personality score. No install, no account, no server-side storage of personal data.
 
 Reference implementation of Forage DeepMind's Digital Human Modeling thesis. Built for a courseware context first (Forage's Digital Human Modeling module), productization deferred until validated ([ADR-0004](docs/adr/0004-product-positioning.md)).
 
 ## Status
 
-MVD (Minimum Viable Demonstration) in active development. Planning and specification phase is complete and Approved (Founder); no application code has shipped yet — see [`docs/agile-backlog.md`](docs/agile-backlog.md) for the MVD critical path (9 stories, 37 points) and current build order.
+MVD (Minimum Viable Demonstration) in active development. Planning and specification phase is complete and Approved (Founder). `evidence-parser` and `compiler` are implemented and tested (CI badge above); `vault-reader` and `store` are implemented but not yet wired together; `dashboard` is not started. See [`docs/agile-backlog.md`](docs/agile-backlog.md) for the MVD critical path (9 stories, 37 points) and current build order.
 
 **Start here:** [`docs/INDEX.md`](docs/INDEX.md) — full map of every document in this repo, what it's for, and its current status.
 
@@ -36,7 +38,7 @@ Module boundary rule: only `vault-reader` touches the file system, only `store` 
 - `docs/` — brief, spec, ADRs, process docs, planning docs. Read `docs/INDEX.md` first.
 - `schema/` — JSON Schema (2020-12) for `Evidence`, `Parameter`, `Relationship`, and the root index file.
 - `wireframes/` — clickable HTML wireframe covering the data states not shown in the original interaction-model prototype.
-- `src/` — application code. Currently stubs matching the module boundaries above — see `docs/agile-backlog.md` for what's actually implemented vs. pending.
+- `src/` — application code, split along the module boundaries above. `evidence-parser` and `compiler` are real and tested; `vault-reader` and `store` are implemented but unwired; `dashboard` is a README, not code yet. See `docs/agile-backlog.md` for the exact build order.
 
 ## Contributing
 
