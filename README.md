@@ -12,6 +12,8 @@ MVD (Minimum Viable Demonstration) in active development. Planning and specifica
 
 **Live build:** deploys to GitHub Pages on every push to `main` via [`deploy-pages.yml`](.github/workflows/deploy-pages.yml) → `https://forageopen.github.io/human-kernel/`. First deploy needs one manual, owner-only step: repo **Settings → Pages → Build and deployment → Source → GitHub Actions**. Nobody but the repo owner can flip that, so treat the link as "will go live once that's set," not "already live."
 
+**Changelog:** see [`CHANGELOG.md`](CHANGELOG.md) — current milestone is `v0.1.0-mvd`.
+
 **Start here:** [`docs/INDEX.md`](docs/INDEX.md) — full map of every document in this repo, what it's for, and its current status.
 
 ## Core Principles
