@@ -8,7 +8,9 @@ Reference implementation of Forage DeepMind's Digital Human Modeling thesis. Bui
 
 ## Status
 
-MVD (Minimum Viable Demonstration) in active development. Planning and specification phase is complete and Approved (Founder). `evidence-parser` and `compiler` are implemented and tested (CI badge above); `vault-reader` and `store` are implemented but not yet wired together; `dashboard` is not started. See [`docs/agile-backlog.md`](docs/agile-backlog.md) for the MVD critical path (9 stories, 37 points) and current build order.
+MVD (Minimum Viable Demonstration) in active development. Planning and specification phase is complete and Approved (Founder). All five modules — `vault-reader`, `evidence-parser`, `compiler`, `store`, `dashboard` — are implemented and wired end-to-end (CI badge above). Covered by unit tests with fakes/jsdom, not yet by a manual browser click-through with a real vault — see [`src/dashboard/README.md`](src/dashboard/README.md) for the precise "what's real / what isn't yet" line. See [`docs/agile-backlog.md`](docs/agile-backlog.md) for the MVD critical path (9 stories, 37 points) and current build order.
+
+**Live build:** deploys to GitHub Pages on every push to `main` via [`deploy-pages.yml`](.github/workflows/deploy-pages.yml) → `https://forageopen.github.io/human-kernel/`. First deploy needs one manual, owner-only step: repo **Settings → Pages → Build and deployment → Source → GitHub Actions**. Nobody but the repo owner can flip that, so treat the link as "will go live once that's set," not "already live."
 
 **Start here:** [`docs/INDEX.md`](docs/INDEX.md) — full map of every document in this repo, what it's for, and its current status.
 
@@ -38,11 +40,16 @@ Module boundary rule: only `vault-reader` touches the file system, only `store` 
 - `docs/` — brief, spec, ADRs, process docs, planning docs. Read `docs/INDEX.md` first.
 - `schema/` — JSON Schema (2020-12) for `Evidence`, `Parameter`, `Relationship`, and the root index file.
 - `wireframes/` — clickable HTML wireframe covering the data states not shown in the original interaction-model prototype.
-- `src/` — application code, split along the module boundaries above. `evidence-parser` and `compiler` are real and tested; `vault-reader` and `store` are implemented but unwired; `dashboard` is a README, not code yet. See `docs/agile-backlog.md` for the exact build order.
+- `src/` — application code, split along the module boundaries above. All five modules are implemented and wired end-to-end; `dashboard` is real code now, not just a README (though `src/dashboard/README.md` still documents the honest gaps). See `docs/agile-backlog.md` for the exact build order.
 
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) — every PR is checked against the three principles above, not just style.
+
+## Credits
+
+- **Adam Rosman** — Founder, Forage DeepMind. Product direction and every Founder Override decision recorded in this repo (see [`docs/INDEX.md`](docs/INDEX.md)).
+- **Claude (Anthropic)** — AI pair-programmer. Drafted the docs, schema, and everything currently in `src/` under the Founder's direction. Flagging the honest mismatch rather than papering over it: GitHub's "Contributors" graph is commit-authorship-based and tied to a real account, which Claude doesn't have — so this line is the accurate record, not that graph. Commits authored with Claude's involvement carry a `Co-Authored-By: Claude <noreply@anthropic.com>` trailer starting from this one.
 
 ## License
 

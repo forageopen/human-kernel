@@ -1,0 +1,184 @@
+// Pure DOM rendering functions - given a root element and data, produce/update
+// markup. No fetch, no file-system access, no globals beyond the DOM APIs
+// themselves - this is what makes these unit-testable with jsdom (render.test.ts).
+//
+// Boundary rule (Tension C / README): this module renders whatever it's given.
+// It never calls vault-reader, evidence-parser, compiler, or store directly -
+// app.ts owns that wiring and passes this module plain data.
+//
+// No frontend framework has been chosen (that would be an unmade architectural
+// decision - see docs/sprint-0-walkthrough-simulated.md). Built with vanilla DOM
+// APIs for the MVD specifically to avoid quietly pre-committing to React/Vue/
+// Svelte without that ever being an actual decision anyone signed off on.
+
+import type { HumanKernelIndex, Parameter } from "../types.js";
+import type { ParseWarning } from "../evidence-parser/index.js";
+
+export function renderUnsupportedBrowser(root: HTMLElement): void {
+  root.innerHTML = "";
+  const box = document.createElement("div");
+  box.className = "hk-empty";
+  box.innerHTML = `
+    <div class="hk-empty-icon">⚠</div>
+    <div><b>Browser not supported</b></div>
+    <div class="hk-muted">Human Kernel needs Chrome, Edge, or Brave (ADR-0003) - the File System
+    Access API isn't available here. Open this page in one of those browsers to continue.</div>
+  `;
+  root.appendChild(box);
+}
+
+export function renderEmptyState(root: HTMLElement, onPickVault: () => void): void {
+  root.innerHTML = "";
+  const box = document.createElement("div");
+  box.className = "hk-empty";
+  box.innerHTML = `
+    <div class="hk-empty-icon">◌</div>
+    <div><b>No vault connected</b></div>
+    <div class="hk-muted">Human Kernel reads a local folder of .md files directly in your
+    browser. Nothing is uploaded anywhere.</div>
+  `;
+  const btn = document.createElement("button");
+  btn.className = "hk-primary";
+  btn.textContent = "Open Vault Folder";
+  btn.addEventListener("click", onPickVault);
+  box.appendChild(btn);
+  root.appendChild(box);
+}
+
+function renderWarningsPanel(warnings: ParseWarning[]): HTMLElement {
+  const panel = document.createElement("div");
+  panel.className = "hk-card";
+  const label = document.createElement("div");
+  label.className = "hk-label";
+  label.textContent = `PARSE WARNINGS (${warnings.length})`;
+  panel.appendChild(label);
+  for (const w of warnings) {
+    const row = document.createElement("div");
+    row.className = "hk-warn-row";
+    row.innerHTML = `<span class="hk-tag">WARNING</span><span>${w.sourceFile} (${w.sourceRef}): ${w.message}</span>`;
+    panel.appendChild(row);
+  }
+  return panel;
+}
+
+function renderParameterCard(param: Parameter, onOpen: (param: Parameter) => void): HTMLElement {
+  const card = document.createElement("div");
+  card.className = "hk-param-card" + (param.status === "disputed" ? " disputed" : "");
+  card.dataset.parameterId = param.id;
+
+  const title = document.createElement("div");
+  title.className = "hk-param-title";
+  title.innerHTML = `<b>${param.name}</b><span class="hk-status-pill ${param.status}">${param.status}</span>`;
+  card.appendChild(title);
+
+  const conf = document.createElement("div");
+  conf.className = "hk-conf";
+  conf.textContent = `Confidence ${param.confidence.toFixed(2)} — ${param.evidenceIds.length} linked evidence. Click to inspect.`;
+  card.appendChild(conf);
+
+  card.addEventListener("click", () => onOpen(param));
+  return card;
+}
+
+export interface DashboardCallbacks {
+  onOpenParameter: (param: Parameter) => void;
+  onRescan: () => void;
+}
+
+/** Renders the populated dashboard: grouped-by-domain parameter cards + warnings, if any. */
+export function renderDashboard(
+  root: HTMLElement,
+  index: HumanKernelIndex,
+  warnings: ParseWarning[],
+  callbacks: DashboardCallbacks
+): void {
+  root.innerHTML = "";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "hk-toolbar";
+  const rescanBtn = document.createElement("button");
+  rescanBtn.className = "hk-primary";
+  rescanBtn.textContent = "Re-scan Vault";
+  rescanBtn.addEventListener("click", callbacks.onRescan);
+  toolbar.appendChild(rescanBtn);
+  root.appendChild(toolbar);
+
+  if (warnings.length > 0) {
+    root.appendChild(renderWarningsPanel(warnings));
+  }
+
+  const byDomain = new Map<string, Parameter[]>();
+  for (const param of index.parameters) {
+    const list = byDomain.get(param.domain) ?? [];
+    list.push(param);
+    byDomain.set(param.domain, list);
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "hk-grid";
+  for (const [domain, params] of byDomain) {
+    const card = document.createElement("div");
+    card.className = "hk-card";
+    const label = document.createElement("div");
+    label.className = "hk-label";
+    label.textContent = `DOMAIN: ${domain.toUpperCase()}`;
+    card.appendChild(label);
+    for (const param of params) {
+      card.appendChild(renderParameterCard(param, callbacks.onOpenParameter));
+    }
+    grid.appendChild(card);
+  }
+  root.appendChild(grid);
+
+  if (index.parameters.length === 0) {
+    const none = document.createElement("div");
+    none.className = "hk-muted";
+    none.textContent = "Vault parsed, but no [!evidence] blocks were found (Spec v0.1 §4).";
+    root.appendChild(none);
+  }
+}
+
+/** Evidence drawer - Brief v2 §10 principle 2 ("every claim needs a witness") made visible. */
+export function renderDrawer(
+  root: HTMLElement,
+  param: Parameter,
+  index: HumanKernelIndex,
+  onClose: () => void
+): void {
+  let drawer = root.querySelector<HTMLElement>(".hk-drawer");
+  if (!drawer) {
+    drawer = document.createElement("div");
+    drawer.className = "hk-drawer";
+    root.appendChild(drawer);
+  }
+
+  const evidence = param.evidenceIds
+    .map((id) => index.evidence.find((e) => e.id === id))
+    .filter((e): e is NonNullable<typeof e> => e !== undefined);
+
+  drawer.innerHTML = "";
+  const label = document.createElement("div");
+  label.className = "hk-label";
+  label.textContent = `EVIDENCE — "${param.name}"`;
+  drawer.appendChild(label);
+
+  for (const ev of evidence) {
+    const row = document.createElement("div");
+    row.className = "hk-evidence-row";
+    row.innerHTML = `<span class="hk-src">${ev.sourceFile}${ev.sourceRef ? "#" + ev.sourceRef : ""}</span><span>${ev.observation}</span><span class="hk-meta">conf ${ev.confidence.toFixed(2)} · ${ev.timestamp.slice(0, 10)}</span>`;
+    drawer.appendChild(row);
+  }
+
+  const closeBtn = document.createElement("span");
+  closeBtn.className = "hk-close";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", onClose);
+  drawer.appendChild(closeBtn);
+
+  drawer.classList.add("active");
+}
+
+export function closeDrawer(root: HTMLElement): void {
+  const drawer = root.querySelector<HTMLElement>(".hk-drawer");
+  drawer?.classList.remove("active");
+}
