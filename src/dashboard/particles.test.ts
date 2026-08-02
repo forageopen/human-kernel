@@ -26,8 +26,11 @@ describe("initParticles", () => {
       expect(p.style.getPropertyValue("--hk-p-dx")).toMatch(/^-?\d+(\.\d+)?vw$/);
       expect(p.style.getPropertyValue("--hk-p-dy")).toMatch(/^-?\d+(\.\d+)?vh$/);
       expect(p.style.getPropertyValue("--hk-p-size")).toMatch(/^\d+(\.\d+)?px$/);
-      expect(p.style.getPropertyValue("--hk-p-drift")).toMatch(/^\d+(\.\d+)?s$/);
-      expect(p.style.getPropertyValue("--hk-p-glow")).toMatch(/^\d+(\.\d+)?s$/);
+      // Bare numbers, no unit - styles.css divides these by a shared
+      // --hk-speed variable via calc(), which only works if there's no unit
+      // baked in already (a slider can't usefully scale "6s", only "6").
+      expect(p.style.getPropertyValue("--hk-p-drift-base")).toMatch(/^\d+(\.\d+)?$/);
+      expect(p.style.getPropertyValue("--hk-p-glow-base")).toMatch(/^\d+(\.\d+)?$/);
     }
 
     // Not all identical - confirms randomization is actually happening rather

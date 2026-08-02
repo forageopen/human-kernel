@@ -13,6 +13,15 @@
 // thin draw wiring): the randomness here is pure and jsdom-testable, the
 // motion itself is not (CSS animations don't run in jsdom, nor do they need
 // to be unit-tested - only that the right elements/properties exist).
+//
+// Speed control (2026-08-02, direct request: a scene-taskbar slider for
+// "the one that moves randomly"): each particle's drift/glow durations are
+// now stored as bare numbers (--hk-p-drift-base / --hk-p-glow-base, no unit)
+// rather than full "Ns" durations. styles.css's animation-duration divides
+// that base by a single shared --hk-speed custom property
+// (`calc(var(--hk-p-drift-base) * 1s / var(--hk-speed))`), so scene-panel.ts's
+// slider can speed up or slow down every particle at once just by writing
+// one variable on <html> - this file never needs to know speed exists at all.
 
 const DEFAULT_COUNT = 22;
 
@@ -51,8 +60,8 @@ function applySpec(el: HTMLElement, spec: ParticleSpec): void {
   el.style.setProperty("--hk-p-dx", `${spec.dxVw}vw`);
   el.style.setProperty("--hk-p-dy", `${spec.dyVh}vh`);
   el.style.setProperty("--hk-p-size", `${spec.sizePx}px`);
-  el.style.setProperty("--hk-p-drift", `${spec.driftSeconds}s`);
-  el.style.setProperty("--hk-p-glow", `${spec.glowSeconds}s`);
+  el.style.setProperty("--hk-p-drift-base", `${spec.driftSeconds}`);
+  el.style.setProperty("--hk-p-glow-base", `${spec.glowSeconds}`);
   el.style.setProperty("--hk-p-delay", `${spec.delaySeconds}s`);
 }
 

@@ -1,101 +1,179 @@
 // Browser entry point. Loaded by index.html as a module script.
 //
-// Wiring order matters here: theme/particles/clock/avatar are page chrome
-// with no dependency on vault data, so they're wired immediately. The five
-// widget-canvas cards split into two kinds - wireBrowserUI owns the one that
-// IS vault-reactive (the heatmap, via heatmapBody) as part of its normal
-// render cycle; the other four (prayer, time window, best-time-for, notepad)
-// don't depend on vault data at all and are wired directly here, once, so
-// they're never destroyed by a vault switch or rescan (see render.ts's
-// top-of-file note for why that split exists). Every widget's drag+resize
-// wiring (makeDraggable) also happens here, once, regardless of which of the
-// two categories it's in.
+// 2026-08-02, current pass: every card on the canvas - including all 5
+// independent Notes slots and the two new Layer-3 cards (Cognitive
+// Currents, Unplanned Activity Check) - is now created dynamically through
+// draggable.ts's createWidget, rather than looking up static per-widget
+// markup in index.html. That gives every card the same chrome for free
+// (drag, native resize, a close button, and a visibility state the scene
+// taskbar can also flip) with no per-card boilerplate. A purple mascot
+// roams the page (mascot.ts), a second background layer chases the first
+// (starchase.ts), and the left-edge scene taskbar (scene-panel.ts) lists
+// every card plus a shared background-motion speed slider.
+//
+// Wiring order still matters: page chrome (clock/particles/starchase/theme/
+// avatar/mascot) has no dependency on vault data and is wired immediately.
+// The widget canvas is built next, entirely from this file - only the
+// heatmap card is vault-reactive (wireBrowserUI/render.ts fill its body on
+// every load/rescan/view-switch); every other card's content is set once,
+// right after creation, and is never touched again by a vault switch (see
+// render.ts's top-of-file note for why that split exists).
 import { wireBrowserUI } from "./dashboard/app.js";
 import { startLiveClock } from "./dashboard/clock.js";
 import { initParticles } from "./dashboard/particles.js";
+import { initStarChase } from "./dashboard/starchase.js";
 import { wireThemeToggle } from "./dashboard/theme.js";
 import { wireAvatar } from "./dashboard/avatar.js";
-import { makeDraggable } from "./dashboard/draggable.js";
+import { wireMascot } from "./dashboard/mascot.js";
+import { createWidget, type WidgetHandle } from "./dashboard/draggable.js";
 import { startPrayerCard } from "./dashboard/prayer-times.js";
 import { startTimeWindowCard, startBestTimeForCard } from "./dashboard/time-window.js";
 import { renderNotepad, wireNotepad } from "./dashboard/notepad.js";
+import {
+  renderCognitiveCurrentsCard,
+  wireCognitiveCurrentsCard,
+  renderUnplannedActivityCard,
+  wireUnplannedActivityCard,
+} from "./dashboard/cognitive-currents.js";
+import { renderScenePanel, wireScenePanel, type SceneCardEntry } from "./dashboard/scene-panel.js";
 
 const root = document.getElementById("app");
 if (!root) {
   throw new Error("index.html is missing the #app root element");
 }
 
-// Footer clock lives outside #app - it's page chrome, not dashboard data, so
-// it's wired directly here rather than through render.ts/app.ts.
+// ---- Page chrome: no dependency on vault data, wired immediately. ----
+
 const clockEl = document.getElementById("hk-live-clock");
 if (clockEl) startLiveClock(clockEl);
 
-// Ambient background particles - same reasoning as the clock: page chrome,
-// not dashboard data, wired directly rather than through render.ts/app.ts.
 const particlesEl = document.getElementById("hk-particles");
 if (particlesEl) initParticles(particlesEl);
 
-// Light/dark toggle - persists in localStorage, defaults to dark (theme.ts).
+const starchaseEl = document.getElementById("hk-starchase");
+if (starchaseEl) initStarChase(starchaseEl);
+
 const themeToggleEl = document.getElementById("hk-theme-toggle");
 if (themeToggleEl) wireThemeToggle(themeToggleEl);
 
-// Generative avatar - click (or Enter/Space) regenerates and remembers the
-// new one.
 const avatarWrapEl = document.getElementById("hk-avatar-wrap");
 if (avatarWrapEl) wireAvatar(avatarWrapEl);
 
-// Widget canvas: drag+resize wiring for all five cards, once. Native
-// `resize:both` (styles.css) needs no JS at all; makeDraggable adds the
-// pointer-driven header drag and persists both to localStorage per widget id.
+const mascotEl = document.getElementById("hk-mascot");
+if (mascotEl) wireMascot(mascotEl);
+
+// ---- Widget canvas: every card is created through createWidget, so drag,
+// resize, close, and scene-taskbar show/hide behave identically everywhere.
+// The rects below are only a first-time-visitor starting layout - dragging
+// or resizing any card persists per-widget-id (draggable.ts) and overrides
+// this on every later visit. ----
+
 const canvasEl = document.getElementById("hk-canvas");
+const widgets: WidgetHandle[] = [];
+
 if (canvasEl) {
-  const widgets: Array<[id: string, handleId: string]> = [
-    ["heatmap", "hk-heatmap-handle"],
-    ["prayer", "hk-prayer-handle"],
-    ["time-window", "hk-time-window-handle"],
-    ["best-time", "hk-best-time-handle"],
-    ["notepad", "hk-notepad-handle"],
+  const heatmapWidget = createWidget(canvasEl, "heatmap", "Activity", {
+    defaultRect: { left: 0, top: 0, width: 560, height: 250 },
+  });
+  widgets.push(heatmapWidget);
+
+  // Upcoming Prayer - real JAKIM data (api.waktusolat.app), fetched at most
+  // once a day and re-rendered every 30s just to keep "next prayer" current.
+  const prayerWidget = createWidget(canvasEl, "prayer", "Upcoming Prayer", {
+    defaultRect: { left: 580, top: 0, width: 280, height: 400 },
+  });
+  widgets.push(prayerWidget);
+  startPrayerCard(prayerWidget.body);
+
+  // Time Window / Best Time For - real content from Adam's Adaptive Daily
+  // OS (Six-Window ROI Map); re-rendered every 60s so the "current window"
+  // highlight stays live without a busy loop.
+  const timeWindowWidget = createWidget(canvasEl, "time-window", "Time Window", {
+    defaultRect: { left: 0, top: 270, width: 270, height: 260 },
+  });
+  widgets.push(timeWindowWidget);
+  startTimeWindowCard(timeWindowWidget.body);
+
+  const bestTimeWidget = createWidget(canvasEl, "best-time", "Best Time For", {
+    defaultRect: { left: 290, top: 270, width: 270, height: 260 },
+  });
+  widgets.push(bestTimeWidget);
+  startBestTimeForCard(bestTimeWidget.body);
+
+  // Layer 3 of the Adaptive Daily OS - the mode-switch engine underneath
+  // the six windows, plus its own 3-question retrospective test for
+  // unplanned activity. Both static-content-at-creation, no timer.
+  const cognitiveCurrentsWidget = createWidget(canvasEl, "cognitive-currents", "Cognitive Currents", {
+    defaultRect: { left: 0, top: 550, width: 270, height: 260 },
+  });
+  widgets.push(cognitiveCurrentsWidget);
+  const { root: ccRoot, mindBtn, handBtn } = renderCognitiveCurrentsCard();
+  cognitiveCurrentsWidget.body.appendChild(ccRoot);
+  wireCognitiveCurrentsCard(mindBtn, handBtn);
+
+  const unplannedWidget = createWidget(canvasEl, "unplanned-activity", "Unplanned Activity Check", {
+    defaultRect: { left: 290, top: 550, width: 270, height: 300 },
+  });
+  widgets.push(unplannedWidget);
+  const { root: uaRoot, checkboxes, noteInput, logBtn, verdict, list } = renderUnplannedActivityCard();
+  unplannedWidget.body.appendChild(uaRoot);
+  wireUnplannedActivityCard(checkboxes, noteInput, logBtn, verdict, list);
+
+  // Up to 5 independent Notes cards (2026-08-02, direct request: "give
+  // option to add more notes card (limit to 5)"). All 5 are created now, so
+  // "adding" one is just enabling it from the scene taskbar - reusing the
+  // same show/hide mechanism every other card already has, rather than a
+  // separate "add card" flow. Only slot 1 is visible by default; 2-5 start
+  // hidden and stay that way until a visitor turns one on.
+  const notesLayout: Array<{ left: number; top: number }> = [
+    { left: 580, top: 420 },
+    { left: 870, top: 420 },
+    { left: 580, top: 700 },
+    { left: 870, top: 700 },
+    { left: 580, top: 980 },
   ];
-  for (const [id, handleId] of widgets) {
-    const widgetEl = canvasEl.querySelector<HTMLElement>(`[data-widget-id="${id}"]`);
-    const handleEl = document.getElementById(handleId);
-    if (widgetEl && handleEl) makeDraggable(widgetEl, handleEl, canvasEl, id);
+  for (let i = 0; i < 5; i++) {
+    const slot = i + 1;
+    const id = `notepad-${slot}`;
+    const pos = notesLayout[i]!;
+    const notesWidget = createWidget(canvasEl, id, slot === 1 ? "Notes" : `Notes ${slot}`, {
+      defaultRect: { left: pos.left, top: pos.top, width: 280, height: 260 },
+      defaultVisible: slot === 1,
+    });
+    widgets.push(notesWidget);
+    const { root: notepadRoot, area, swatches } = renderNotepad(String(slot));
+    notesWidget.body.appendChild(notepadRoot);
+    wireNotepad(String(slot), notepadRoot, area, swatches);
   }
 }
 
-// Upcoming Prayer - real JAKIM data (api.waktusolat.app), fetched at most
-// once a day and re-rendered every 30s just to keep "next prayer" current.
-const prayerBodyEl = document.getElementById("hk-prayer-body");
-if (prayerBodyEl) startPrayerCard(prayerBodyEl);
-
-// Time Window / Best Time For - illustrative six-window model, flagged as
-// pending the real Adaptive Daily OS document; re-rendered every 60s so the
-// "current window" highlight stays live without a busy loop.
-const timeWindowBodyEl = document.getElementById("hk-time-window-body");
-if (timeWindowBodyEl) startTimeWindowCard(timeWindowBodyEl);
-
-const bestTimeBodyEl = document.getElementById("hk-best-time-body");
-if (bestTimeBodyEl) startBestTimeForCard(bestTimeBodyEl);
-
-// Notepad - contenteditable + highlighter, persists to localStorage as the
-// visitor types.
-const notepadBodyEl = document.getElementById("hk-notepad-body");
-if (notepadBodyEl) {
-  const { root: notepadRoot, area, swatches } = renderNotepad();
-  notepadBodyEl.appendChild(notepadRoot);
-  wireNotepad(notepadRoot, area, swatches);
+// ---- Scene taskbar: lists every card above with a live show/hide switch,
+// plus the shared background-motion speed slider - built straight from the
+// widgets array so it can never fall out of sync with what's actually on
+// the canvas. ----
+if (widgets.length > 0) {
+  const entries: SceneCardEntry[] = widgets.map((w) => ({
+    id: w.id,
+    label: w.title,
+    isVisible: w.isVisible,
+    setVisible: w.setVisible,
+  }));
+  const { root: panelRoot, tab, toggleInputs, speedSlider } = renderScenePanel(entries);
+  document.body.appendChild(panelRoot);
+  wireScenePanel(panelRoot, tab, toggleInputs, speedSlider, entries);
 }
 
-// Vault-reactive dashboard: source banner/warnings/heatmap content, plus the
-// evidence drawer and profile-header stats. heatmapBody and drawerEl are the
-// stable elements described above - wireBrowserUI/render.ts fill them, never
-// recreate them.
-const heatmapBodyEl = document.getElementById("hk-heatmap-body");
+// ---- Vault-reactive dashboard: source banner/warnings/heatmap content,
+// plus the evidence drawer and profile-header stats. heatmapBody and
+// drawerEl are stable elements - wireBrowserUI/render.ts fill them, never
+// recreate them, so nothing above is ever touched by a vault switch or
+// rescan (see render.ts's top-of-file note). ----
+const heatmapBodyEl = widgets.find((w) => w.id === "heatmap")?.body;
 const drawerEl = document.getElementById("hk-drawer");
 const statEvidenceEl = document.getElementById("hk-stat-evidence");
 const statParametersEl = document.getElementById("hk-stat-parameters");
 
-if (!heatmapBodyEl) throw new Error("index.html is missing #hk-heatmap-body");
+if (!heatmapBodyEl) throw new Error("The heatmap widget wasn't created - check #hk-canvas exists in index.html");
 if (!drawerEl) throw new Error("index.html is missing #hk-drawer");
 
 void wireBrowserUI(

@@ -10,38 +10,72 @@
 // more code for the same real-browser result here, so this stays
 // deliberately simple - wrapped in try/catch since execCommand can throw or
 // no-op depending on environment/selection state.
+//
+// Multi-instance (2026-08-02, direct request: "give option to add more
+// notes card (limit to 5)"): every load/save function now takes an `id` so
+// up to 5 independent notepads can each persist their own content and
+// highlight color without colliding. Instance "1" is the original single
+// notepad this card shipped with - it migrates forward from the old
+// unsuffixed storage keys the first time it loads, so nobody's already-typed
+// note silently vanishes just because multi-instance support landed later.
+// After that first read, everything - reads and writes - goes through the
+// per-instance keys only; the legacy keys are never written to again.
+//
+// Highlight contrast fix (same day, direct feedback: "when the text were
+// highlighted, can the text color to dark so it's contrast"): all 4 swatch
+// colors are light pastels, and the notepad's own text color is the
+// light/near-white tone meant for a dark card background - stacking one on
+// the other made highlighted text unreadable. Every hiliteColor call is now
+// immediately followed by a foreColor call setting the same selection's text
+// to a fixed dark charcoal, so a highlight always has a highlight-colored
+// background AND dark, readable text, regardless of which of the 4 swatches
+// was used or which app theme (dark/light) is active.
 
-const STORAGE_KEY_CONTENT = "hk-notepad-content";
-const STORAGE_KEY_COLOR = "hk-notepad-color";
+const LEGACY_CONTENT_KEY = "hk-notepad-content";
+const LEGACY_COLOR_KEY = "hk-notepad-color";
 const DEFAULT_COLORS = ["#f5e6a3", "#a8d5a3", "#a3c9e6", "#e6a3c4"];
+const HIGHLIGHT_TEXT_COLOR = "#1c1c1a"; // Deep Charcoal - dark on every swatch, both app themes
 
-export function loadNotepadContent(): string {
+function contentKey(id: string): string {
+  return `hk-notepad-content-${id}`;
+}
+function colorKey(id: string): string {
+  return `hk-notepad-color-${id}`;
+}
+
+export function loadNotepadContent(id: string): string {
   try {
-    return localStorage.getItem(STORAGE_KEY_CONTENT) ?? "";
+    const perInstance = localStorage.getItem(contentKey(id));
+    if (perInstance !== null) return perInstance;
+    if (id === "1") return localStorage.getItem(LEGACY_CONTENT_KEY) ?? "";
+    return "";
   } catch {
     return "";
   }
 }
 
-export function saveNotepadContent(html: string): void {
+export function saveNotepadContent(id: string, html: string): void {
   try {
-    localStorage.setItem(STORAGE_KEY_CONTENT, html);
+    localStorage.setItem(contentKey(id), html);
   } catch {
     // no persistence available this session
   }
 }
 
-export function loadHighlightColor(): string {
+export function loadHighlightColor(id: string): string {
   try {
-    return localStorage.getItem(STORAGE_KEY_COLOR) ?? DEFAULT_COLORS[0]!;
+    const perInstance = localStorage.getItem(colorKey(id));
+    if (perInstance !== null) return perInstance;
+    if (id === "1") return localStorage.getItem(LEGACY_COLOR_KEY) ?? DEFAULT_COLORS[0]!;
+    return DEFAULT_COLORS[0]!;
   } catch {
     return DEFAULT_COLORS[0]!;
   }
 }
 
-export function saveHighlightColor(color: string): void {
+export function saveHighlightColor(id: string, color: string): void {
   try {
-    localStorage.setItem(STORAGE_KEY_COLOR, color);
+    localStorage.setItem(colorKey(id), color);
   } catch {
     // no persistence available this session
   }
@@ -51,13 +85,13 @@ export function saveHighlightColor(color: string): void {
  * itself. Kept as a pure builder (no execCommand calls here) so its shape is
  * testable without jsdom needing to support contenteditable execCommand (it
  * doesn't); wireNotepad below adds the actual interactive behavior. */
-export function renderNotepad(): { root: HTMLElement; area: HTMLElement; swatches: HTMLElement[] } {
+export function renderNotepad(id: string): { root: HTMLElement; area: HTMLElement; swatches: HTMLElement[] } {
   const root = document.createElement("div");
 
   const toolbar = document.createElement("div");
   toolbar.className = "hk-notepad-toolbar";
 
-  const activeColor = loadHighlightColor();
+  const activeColor = loadHighlightColor(id);
   const swatches: HTMLElement[] = [];
   for (const color of DEFAULT_COLORS) {
     const swatch = document.createElement("button");
@@ -82,28 +116,30 @@ export function renderNotepad(): { root: HTMLElement; area: HTMLElement; swatche
   area.className = "hk-notepad-area";
   area.contentEditable = "true";
   area.dataset.placeholder = "Type a note...";
-  area.innerHTML = loadNotepadContent();
+  area.innerHTML = loadNotepadContent(id);
   root.appendChild(area);
 
   return { root, area, swatches };
 }
 
 /** Wires the interactive behavior: clicking a swatch sets the active
- * highlight color (and applies it to any current text selection); typing
- * saves to localStorage; Clear wipes the note. No confirmation dialog on
- * Clear - this is a low-stakes personal scratchpad, not a destructive
- * account action, so that would just be friction. */
-export function wireNotepad(root: HTMLElement, area: HTMLElement, swatches: HTMLElement[]): void {
-  const persist = (): void => saveNotepadContent(area.innerHTML);
+ * highlight color (and applies it, plus a dark text color for contrast, to
+ * any current text selection); typing saves to localStorage; Clear wipes
+ * the note. No confirmation dialog on Clear - this is a low-stakes personal
+ * scratchpad, not a destructive account action, so that would just be
+ * friction. */
+export function wireNotepad(id: string, root: HTMLElement, area: HTMLElement, swatches: HTMLElement[]): void {
+  const persist = (): void => saveNotepadContent(id, area.innerHTML);
 
   for (const swatch of swatches) {
     swatch.addEventListener("click", () => {
       const color = swatch.dataset.color ?? DEFAULT_COLORS[0]!;
-      saveHighlightColor(color);
+      saveHighlightColor(id, color);
       for (const s of swatches) s.classList.toggle("active", s === swatch);
       area.focus();
       try {
         document.execCommand("hiliteColor", false, color);
+        document.execCommand("foreColor", false, HIGHLIGHT_TEXT_COLOR);
       } catch {
         // execCommand unsupported/no-op in this environment - the color
         // still becomes the active choice for future selections.

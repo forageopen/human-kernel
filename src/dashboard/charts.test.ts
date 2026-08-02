@@ -1,11 +1,10 @@
 /** @vitest-environment jsdom */
-// The six Chart.js chart cards this file used to also cover (domain count,
-// confidence histogram, status donut, relationship types, source files,
-// domain-confidence radar) are gone - scrapped per direct instruction. Only
-// the heatmap remains, now spanning the real Evidence date range instead of
-// one calendar month at a time.
-import { describe, it, expect } from "vitest";
-import { evidenceDateRange, renderEvidenceHeatmap } from "./charts.js";
+// Activity card as a traditional month calendar (2026-08-02, direct
+// feedback: "fix activity card. seems too long to scroll. do the calendar
+// type instead" - replacing the earlier GitHub-contribution-style
+// week-column strip from a few hours before).
+import { describe, it, expect, vi } from "vitest";
+import { renderCalendarHeatmap } from "./charts.js";
 import type { Evidence } from "../types.js";
 
 function ev(overrides: Partial<Evidence>): Evidence {
@@ -20,90 +19,123 @@ function ev(overrides: Partial<Evidence>): Evidence {
   };
 }
 
-describe("evidenceDateRange", () => {
-  it("returns today for both start and end when there is no evidence at all", () => {
-    const now = new Date("2026-08-02T00:00:00.000Z");
-    const range = evidenceDateRange([], now);
-    expect(range.start.getTime()).toBe(now.getTime());
-    expect(range.end.getTime()).toBe(now.getTime());
-  });
-
-  it("spans from the earliest real timestamp to today - never clips real data to one month", () => {
-    const now = new Date("2026-08-02T00:00:00.000Z");
+describe("renderCalendarHeatmap - which month it opens on", () => {
+  it("defaults to the month containing the most recent real evidence, not always 'today'", () => {
     const evidence = [
       ev({ id: "1", timestamp: "2025-06-22T10:00:00.000Z" }),
-      ev({ id: "2", timestamp: "2026-05-15T10:00:00.000Z" }),
-      ev({ id: "3", timestamp: "2026-07-04T10:00:00.000Z" }),
+      ev({ id: "2", timestamp: "2026-07-04T10:00:00.000Z" }),
     ];
-    const range = evidenceDateRange(evidence, now);
-    expect(range.start.getFullYear()).toBe(2025);
-    expect(range.start.getMonth()).toBe(5); // June
-    expect(range.start.getDate()).toBe(22);
-    // end is "today" since today is later than the latest evidence timestamp -
-    // compared against `now` itself (not a separately-constructed local Date)
-    // so this isn't dependent on the test machine's timezone offset.
-    expect(range.end.getTime()).toBe(now.getTime());
+    const el = renderCalendarHeatmap(evidence, vi.fn());
+    expect(el.querySelector(".hk-calendar-month-label")?.textContent).toContain("July 2026");
   });
 
-  it("uses the latest evidence date as the end if it is somehow after 'now'", () => {
-    const now = new Date("2026-01-01T00:00:00.000Z");
+  it("defaults to the current month when there is no evidence at all", () => {
+    const el = renderCalendarHeatmap([], vi.fn());
+    const now = new Date();
+    const expected = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    expect(el.querySelector(".hk-calendar-month-label")?.textContent).toBe(expected);
+  });
+
+  it("an explicit initialMonth overrides the most-recent-evidence default", () => {
     const evidence = [ev({ id: "1", timestamp: "2026-07-04T10:00:00.000Z" })];
-    const range = evidenceDateRange(evidence, now);
-    expect(range.end.getFullYear()).toBe(2026);
-    expect(range.end.getMonth()).toBe(6); // July
+    const el = renderCalendarHeatmap(evidence, vi.fn(), new Date(2025, 0, 15));
+    expect(el.querySelector(".hk-calendar-month-label")?.textContent).toBe("January 2025");
   });
 });
 
-describe("renderEvidenceHeatmap", () => {
-  it("shows all real active dates across the full span, not just the busiest single month", () => {
-    const now = new Date(2026, 7, 2);
-    const evidence = [
-      ev({ id: "1", timestamp: "2025-06-22T10:00:00.000Z" }),
-      ev({ id: "2", timestamp: "2026-05-15T10:00:00.000Z" }),
-      ev({ id: "3", timestamp: "2026-07-04T10:00:00.000Z" }),
-    ];
-    const wrap = renderEvidenceHeatmap(evidence, now);
-    // Scoped to .hk-heatmap-weeks specifically - the Less->More legend below
-    // the grid reuses these same .hk-heatmap-cell.level-N classes on its 5
-    // swatches (by design, so the legend visually matches the grid), and an
-    // unscoped query here would double-count those swatches as if they were
-    // real days.
-    const activeCells = Array.from(
-      wrap.querySelectorAll<HTMLElement>(".hk-heatmap-weeks .hk-heatmap-cell:not(.empty)")
-    ).filter((c) => !c.className.includes("level-0"));
-    const activeDates = activeCells.map((c) => c.dataset.date).sort();
-    expect(activeDates).toEqual(["2025-06-22", "2026-05-15", "2026-07-04"]);
+describe("renderCalendarHeatmap - grid structure", () => {
+  it("renders 7 day-of-week headers and pads the grid so day 1 lands on its real weekday", () => {
+    // January 2026: the 1st is a Thursday.
+    const el = renderCalendarHeatmap([], vi.fn(), new Date(2026, 0, 1));
+    expect(el.querySelectorAll(".hk-calendar-dow").length).toBe(7);
+
+    const cells = Array.from(el.querySelectorAll(".hk-calendar-grid > *"));
+    const emptyLeadingCells = cells.findIndex((c) => !c.classList.contains("empty"));
+    expect(emptyLeadingCells).toBe(new Date(2026, 0, 1).getDay());
+    expect(cells[emptyLeadingCells]?.querySelector(".hk-calendar-daynum")?.textContent).toBe("1");
   });
 
-  it("is color-only - no visible digit inside a cell, exact date/count is on title/hover instead", () => {
-    const wrap = renderEvidenceHeatmap([ev({ id: "1", timestamp: "2026-01-15T00:00:00.000Z" })], new Date(2026, 0, 20));
-    const cells = Array.from(wrap.querySelectorAll<HTMLElement>(".hk-heatmap-weeks .hk-heatmap-cell:not(.empty)"));
-    expect(cells.every((c) => c.textContent === "")).toBe(true);
-    const day15 = cells.find((c) => c.dataset.date === "2026-01-15");
-    expect(day15?.title).toContain("January 15, 2026");
-    expect(day15?.title).toContain("1 entry");
+  it("renders exactly one cell per real day in the month, each showing its day number", () => {
+    // February 2026 (not a leap year) has 28 days.
+    const el = renderCalendarHeatmap([], vi.fn(), new Date(2026, 1, 1));
+    const realCells = el.querySelectorAll(".hk-calendar-grid .hk-calendar-daynum");
+    expect(realCells.length).toBe(28);
+    expect(realCells[27]?.textContent).toBe("28");
   });
 
-  it("never fabricates a count - a day with zero real Evidence is level-0, not guessed", () => {
-    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 5));
-    const cells = wrap.querySelectorAll(".hk-heatmap-weeks .hk-heatmap-cell:not(.empty)");
-    expect(Array.from(cells).every((c) => c.className.includes("level-0"))).toBe(true);
-  });
-
-  it("renders a Less -> More legend using the same level-N swatch classes as the grid", () => {
-    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 5));
-    const legend = wrap.querySelector(".hk-heatmap-legend");
+  it("renders a Less -> More legend with 5 level swatches", () => {
+    const el = renderCalendarHeatmap([], vi.fn());
+    const legend = el.querySelector(".hk-heatmap-legend");
     expect(legend?.textContent).toContain("Less");
     expect(legend?.textContent).toContain("More");
-    expect(legend?.querySelectorAll(".hk-heatmap-cell").length).toBe(5); // level-0..level-4
+    expect(legend?.querySelectorAll(".hk-heatmap-cell").length).toBe(5);
+  });
+});
+
+describe("renderCalendarHeatmap - intensity, never fabricated", () => {
+  it("a day with real evidence gets a level above 0; a day with none is level-0", () => {
+    const evidence = [ev({ id: "1", timestamp: "2026-01-15T00:00:00.000Z" })];
+    const el = renderCalendarHeatmap(evidence, vi.fn(), new Date(2026, 0, 1));
+
+    const day15 = el.querySelector<HTMLElement>('[data-date="2026-01-15"]');
+    expect(day15?.className).not.toContain("level-0");
+
+    const day16 = el.querySelector<HTMLElement>('[data-date="2026-01-16"]');
+    expect(day16?.className).toContain("level-0");
   });
 
-  it("each week column starts on a Sunday", () => {
-    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 5)); // a Monday
-    const firstWeek = wrap.querySelector(".hk-heatmap-week");
-    const firstRealCell = firstWeek?.querySelector<HTMLElement>(".hk-heatmap-cell");
-    // Jan 5 2026 is a Monday, so the grid should start Sun Jan 4 (empty - before any real range start/end since range is just that single day) or later - the key assertion is structural: 7 day-cells per week column plus one month-label slot.
-    expect(firstWeek?.children.length).toBe(8); // 1 month-label slot + 7 day cells
-    expect(firstRealCell).not.toBeNull();
+  it("exact date and count are on the title attribute, not a visible digit beyond the day number", () => {
+    const evidence = [ev({ id: "1", timestamp: "2026-01-15T00:00:00.000Z" }), ev({ id: "2", timestamp: "2026-01-15T04:00:00.000Z" })];
+    const el = renderCalendarHeatmap(evidence, vi.fn(), new Date(2026, 0, 1));
+    const day15 = el.querySelector<HTMLElement>('[data-date="2026-01-15"]');
+    expect(day15?.title).toContain("January 15, 2026");
+    expect(day15?.title).toContain("2 entries");
+  });
+});
+
+describe("renderCalendarHeatmap - click wiring", () => {
+  it("clicking a day with evidence calls onDayClick with that date key", () => {
+    const evidence = [ev({ id: "1", timestamp: "2026-01-15T00:00:00.000Z" })];
+    const onDayClick = vi.fn();
+    const el = renderCalendarHeatmap(evidence, onDayClick, new Date(2026, 0, 1));
+
+    el.querySelector<HTMLElement>('[data-date="2026-01-15"]')?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(onDayClick).toHaveBeenCalledWith("2026-01-15");
+  });
+
+  it("a day with zero evidence is not wired to open anything", () => {
+    const onDayClick = vi.fn();
+    const el = renderCalendarHeatmap([], onDayClick, new Date(2026, 0, 1));
+    el.querySelector<HTMLElement>('[data-date="2026-01-16"]')?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+
+  it("navigating to a different month re-wires clicks on the NEWLY rendered cells too", () => {
+    // This is the exact bug an earlier version had: click-wiring done once,
+    // externally, right after the initial render, meant cells created by a
+    // later Prev/Next click had no listener at all.
+    const evidence = [ev({ id: "1", timestamp: "2026-02-10T00:00:00.000Z" })];
+    const onDayClick = vi.fn();
+    const el = renderCalendarHeatmap(evidence, onDayClick, new Date(2026, 0, 1));
+
+    el.querySelector<HTMLElement>(".hk-calendar-nav[aria-label='Next month']")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(el.querySelector(".hk-calendar-month-label")?.textContent).toBe("February 2026");
+
+    el.querySelector<HTMLElement>('[data-date="2026-02-10"]')?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(onDayClick).toHaveBeenCalledWith("2026-02-10");
+  });
+});
+
+describe("renderCalendarHeatmap - month navigation", () => {
+  it("Previous steps back a month, including across a year boundary", () => {
+    const el = renderCalendarHeatmap([], vi.fn(), new Date(2026, 0, 1));
+    el.querySelector<HTMLElement>(".hk-calendar-nav[aria-label='Previous month']")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(el.querySelector(".hk-calendar-month-label")?.textContent).toBe("December 2025");
+  });
+
+  it("Next steps forward a month, including across a year boundary", () => {
+    const el = renderCalendarHeatmap([], vi.fn(), new Date(2025, 11, 1));
+    el.querySelector<HTMLElement>(".hk-calendar-nav[aria-label='Next month']")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(el.querySelector(".hk-calendar-month-label")?.textContent).toBe("January 2026");
   });
 });

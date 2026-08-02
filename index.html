@@ -11,17 +11,30 @@
      styles.css (Georgia/Arial/Courier New) apply if this CDN load fails. -->
 <link rel="stylesheet" href="styles.css">
 <!-- No Chart.js as of the 2026-08-02 rebuild - the six chart cards that used
-     it were scrapped per direct instruction; the heatmap (the one visual
-     that survives) is hand-drawn DOM/CSS, not canvas-based, so there's
-     nothing left in this page that needs it. -->
+     it were scrapped per direct instruction; the heatmap/calendar (the one
+     visual that survives) is hand-drawn DOM/CSS, not canvas-based, so
+     there's nothing left in this page that needs it. -->
 </head>
 <body>
 
-<!-- Ambient background particles (page chrome, not dashboard data) - fixed,
-     behind everything, pointer-events disabled. Populated by main.ts via
-     src/dashboard/particles.ts. Hidden outright under prefers-reduced-motion
-     (see styles.css). -->
+<!-- Two independent ambient background layers (page chrome, not dashboard
+     data) - fixed, behind everything, pointer-events disabled. Populated by
+     main.ts via src/dashboard/particles.ts (slow drifting dots) and
+     src/dashboard/starchase.ts (two fast groups chasing on opposite
+     diagonals). Both hidden under prefers-reduced-motion (see styles.css);
+     both share one speed control (the scene taskbar's slider, --hk-speed). -->
 <div class="hk-particles" id="hk-particles" aria-hidden="true"></div>
+<div class="hk-starchase" id="hk-starchase" aria-hidden="true"></div>
+
+<!-- Auto-hide left scene taskbar - built and mounted entirely by
+     src/dashboard/scene-panel.ts, since its whole contents (the card list)
+     depend on the widget set main.ts creates. Nothing static needed here. -->
+
+<!-- Purple 8-bit mascot - a free-roaming "cousin" of the Claude Code avatar
+     (src/dashboard/mascot.ts). Hover to squint, click-and-hold to drag,
+     release to have it fall like a leaf to a resting spot near the bottom
+     of the viewport; that spot is remembered for next visit. -->
+<div class="hk-mascot" id="hk-mascot" role="img" aria-label="A small purple mascot - drag it around"></div>
 
 <div class="hk-shell">
 
@@ -41,7 +54,7 @@
     </div>
     <div class="hk-profile-body">
       <h1 class="hk-profile-name">Adam Rosman</h1>
-      <div class="hk-profile-bio">A working example profile, built from real notes — open your own vault below when you're ready to see your own.</div>
+      <div class="hk-profile-bio">Here's my virtual desktop for your day-to-day assistance. I've provided useful cards to help you stay on track. Have fun working!</div>
       <div class="hk-profile-stats">
         <span class="hk-profile-stat"><b id="hk-stat-evidence">–</b> notes captured</span>
         <span class="hk-profile-stat"><b id="hk-stat-parameters">–</b> traits tracked</span>
@@ -56,54 +69,13 @@
        element. -->
   <div id="app" class="hk-page"></div>
 
-  <!-- Free-form widget canvas: resizable (native corner-drag, browser-native
-       `resize:both`) and movable (drag the header) cards, arrangement
-       remembered per visitor (src/dashboard/draggable.ts). Wired once by
-       main.ts and never rebuilt afterward, so dragging one around or typing
-       a note survives switching between the sample and your own vault. -->
-  <div class="hk-canvas" id="hk-canvas">
-
-    <div class="hk-widget" data-widget-id="heatmap" style="left:0px; top:0px; width:560px; height:250px;">
-      <div class="hk-widget-handle" id="hk-heatmap-handle">
-        <span class="hk-label" style="margin:0">Activity</span>
-        <span class="hk-widget-grip">⠿⠿</span>
-      </div>
-      <div class="hk-widget-body" id="hk-heatmap-body"></div>
-    </div>
-
-    <div class="hk-widget" data-widget-id="prayer" style="left:580px; top:0px; width:280px; height:400px;">
-      <div class="hk-widget-handle" id="hk-prayer-handle">
-        <span class="hk-label" style="margin:0">Upcoming Prayer</span>
-        <span class="hk-widget-grip">⠿⠿</span>
-      </div>
-      <div class="hk-widget-body" id="hk-prayer-body"></div>
-    </div>
-
-    <div class="hk-widget" data-widget-id="time-window" style="left:0px; top:270px; width:270px; height:280px;">
-      <div class="hk-widget-handle" id="hk-time-window-handle">
-        <span class="hk-label" style="margin:0">Time Window</span>
-        <span class="hk-widget-grip">⠿⠿</span>
-      </div>
-      <div class="hk-widget-body" id="hk-time-window-body"></div>
-    </div>
-
-    <div class="hk-widget" data-widget-id="best-time" style="left:290px; top:270px; width:270px; height:200px;">
-      <div class="hk-widget-handle" id="hk-best-time-handle">
-        <span class="hk-label" style="margin:0">Best Time For</span>
-        <span class="hk-widget-grip">⠿⠿</span>
-      </div>
-      <div class="hk-widget-body" id="hk-best-time-body"></div>
-    </div>
-
-    <div class="hk-widget" data-widget-id="notepad" style="left:580px; top:420px; width:280px; height:260px;">
-      <div class="hk-widget-handle" id="hk-notepad-handle">
-        <span class="hk-label" style="margin:0">Notes</span>
-        <span class="hk-widget-grip">⠿⠿</span>
-      </div>
-      <div class="hk-widget-body" id="hk-notepad-body"></div>
-    </div>
-
-  </div>
+  <!-- Free-form widget canvas: every card (including all 5 Notes slots) is
+       created dynamically by main.ts via src/dashboard/draggable.ts's
+       createWidget - resizable (native `resize:both`), movable (drag the
+       header), closable (the x button) and re-enableable from the scene
+       taskbar, arrangement remembered per visitor. Starts empty on purpose -
+       there is no longer any static per-widget markup here at all. -->
+  <div class="hk-canvas" id="hk-canvas"></div>
 
   <footer class="hk-footer">
     Built by <a href="https://github.com/forageopen" target="_blank" rel="noopener">Adam Rosman</a> with Claude (Anthropic) — see <a href="https://github.com/forageopen/human-kernel#credits" target="_blank" rel="noopener">Credits</a>.
@@ -114,7 +86,7 @@
 
 <!-- Evidence detail popup - page-level (fixed position), stable across
      every re-render, so its one-time drag wiring (render.ts's renderDrawer)
-     never gets re-attached. Opens on a heatmap day click. -->
+     never gets re-attached. Opens on a calendar day click. -->
 <div class="hk-drawer" id="hk-drawer"></div>
 
 <script type="module" src="dist/main.js"></script>

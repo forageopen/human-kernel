@@ -113,8 +113,8 @@ describe("renderDashboard", () => {
     renderDashboard(appRoot, heatmapBody, makeIndex(), [], "own-vault", makeCallbacks());
 
     expect(appRoot.querySelector(".hk-source-banner")).not.toBeNull();
-    expect(appRoot.querySelector(".hk-heatmap")).toBeNull();
-    expect(heatmapBody.querySelector(".hk-heatmap")).not.toBeNull();
+    expect(appRoot.querySelector(".hk-calendar")).toBeNull();
+    expect(heatmapBody.querySelector(".hk-calendar")).not.toBeNull();
   });
 
   it("no longer renders any domain-grouped parameter grid or chart cards (scrapped 2026-08-02)", () => {

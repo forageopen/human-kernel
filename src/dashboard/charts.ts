@@ -1,22 +1,25 @@
-// GitHub-style calendar heatmap (2026-08-02, fourth pass - real-data variety
-// fix). The six Chart.js cards that used to live in this file (domain count,
-// confidence histogram, status donut, relationship types, source files,
-// domain-confidence radar) are gone per direct instruction ("lets scrap:
-// parameters by domain, confidence distribution, status breakdown,
-// relationship type, evidence by source file, mean confidence by domain") -
-// see render.ts and index.html, which no longer load Chart.js at all now
-// that nothing here uses it.
+// Activity card: a traditional month calendar, not a GitHub-style
+// contribution strip (2026-08-02, direct feedback: "fix activity card.
+// seems too long to scroll. do the calendar type instead"). One month
+// on screen at a time - Prev/Next navigate - so there's no horizontal
+// scrollbar to fight with inside a small card. Cell coloring (the
+// `.hk-heatmap-cell level-N` classes, and the Less->More legend) is kept
+// unchanged from the earlier GitHub-style version; only the layout around
+// it changed, from week-columns to a day-number grid.
 //
-// This file used to show one calendar month at a time, defaulting to
-// whichever month had the most real Evidence - direct feedback: "it's just
-// one day that's shown active - introduce variety." The real vault data
-// (sample-vault/README.md) has genuine activity on three real, separate
-// dates thirteen months apart (2025-06-22, 2026-05-15, 2026-07-04) that a
-// single-month view can only ever show one of at a time. The fix is not to
-// invent more data - it's to stop hiding the real data that already exists:
-// this now renders a GitHub-contribution-style week-column grid spanning
-// from the earliest real Evidence date to today, so all three real active
-// periods are visible at once. Zero invented entries.
+// Click-to-open-evidence now lives entirely inside this file: `onDayClick`
+// is called directly by whichever cell was clicked, re-wired fresh every
+// time renderMonth() runs (including on every Prev/Next click, which
+// creates brand-new cell elements). An earlier version wired clicks
+// externally, once, right after the initial render - that broke the moment
+// someone navigated to a different month, since the newly-created cells for
+// that month never got a listener attached at all.
+//
+// Defaults to the month containing the most recent real Evidence (or the
+// current month if there's none yet) rather than always "today" - since the
+// real vault data can be many months old, defaulting to "today" would often
+// open on a completely blank month while real activity sits unreached a
+// few clicks of Prev away.
 
 import type { Evidence } from "../types.js";
 
@@ -24,37 +27,13 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** The real span to render: earliest real Evidence timestamp through today
- * (or through the latest Evidence timestamp, if that's somehow in the
- * future). Falls back to just today when there's no Evidence at all - never
- * a fabricated range. */
-export function evidenceDateRange(evidence: Evidence[], now: Date = new Date()): { start: Date; end: Date } {
-  if (evidence.length === 0) return { start: now, end: now };
-  let min = new Date(evidence[0]!.timestamp);
-  let max = min;
-  for (const e of evidence) {
-    const d = new Date(e.timestamp);
-    if (d.getTime() < min.getTime()) min = d;
-    if (d.getTime() > max.getTime()) max = d;
-  }
-  if (now.getTime() > max.getTime()) max = now;
-  return { start: min, end: max };
-}
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** GitHub-style calendar heatmap: weeks as columns (Sun-Sat rows), spanning
- * the real Evidence date range. Color-only intensity (no visible digit -
- * same reasoning as before: a digit forces cells to be big), exact
- * date/count on hover `title`, month labels above the column where each
- * month starts, Less->More legend. Cell intensity is scaled against the
- * busiest single day across the WHOLE rendered range (not per-month), so
- * relative intensity stays meaningful across the wider span. */
-export function renderEvidenceHeatmap(evidence: Evidence[], now: Date = new Date()): HTMLElement {
-  const { start, end } = evidenceDateRange(evidence, now);
-
-  const gridStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  gridStart.setDate(gridStart.getDate() - gridStart.getDay()); // back up to the Sunday on/before start
-  const gridEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-
+export function renderCalendarHeatmap(
+  evidence: Evidence[],
+  onDayClick: (dateKey: string) => void,
+  initialMonth?: Date
+): HTMLElement {
   const countsByDate = new Map<string, number>();
   for (const e of evidence) {
     const key = dateKey(new Date(e.timestamp));
@@ -62,73 +41,69 @@ export function renderEvidenceHeatmap(evidence: Evidence[], now: Date = new Date
   }
   const maxCount = Math.max(1, ...Array.from(countsByDate.values()));
 
-  const wrap = document.createElement("div");
-  wrap.className = "hk-heatmap";
+  let cursorYear: number;
+  let cursorMonth: number; // 0-11
+  if (initialMonth) {
+    cursorYear = initialMonth.getFullYear();
+    cursorMonth = initialMonth.getMonth();
+  } else if (evidence.length > 0) {
+    let latest = new Date(evidence[0]!.timestamp);
+    for (const e of evidence) {
+      const d = new Date(e.timestamp);
+      if (d.getTime() > latest.getTime()) latest = d;
+    }
+    cursorYear = latest.getFullYear();
+    cursorMonth = latest.getMonth();
+  } else {
+    const now = new Date();
+    cursorYear = now.getFullYear();
+    cursorMonth = now.getMonth();
+  }
 
-  const label = document.createElement("div");
-  label.className = "hk-label";
-  label.textContent = "Activity";
-  wrap.appendChild(label);
+  const wrap = document.createElement("div");
+  wrap.className = "hk-calendar";
 
   const caption = document.createElement("div");
-  caption.className = "hk-muted hk-heatmap-caption";
+  caption.className = "hk-muted hk-calendar-caption";
   caption.textContent = "How often new entries were added, day by day.";
   wrap.appendChild(caption);
 
-  const scroll = document.createElement("div");
-  scroll.className = "hk-heatmap-scroll";
+  const header = document.createElement("div");
+  header.className = "hk-calendar-header";
 
-  const dowCol = document.createElement("div");
-  dowCol.className = "hk-heatmap-dow-col";
-  const dowSpacer = document.createElement("div");
-  dowSpacer.className = "hk-heatmap-month-slot";
-  dowCol.appendChild(dowSpacer);
-  for (const dow of ["", "Mon", "", "Wed", "", "Fri", ""]) {
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = "hk-calendar-nav";
+  prevBtn.textContent = "‹";
+  prevBtn.setAttribute("aria-label", "Previous month");
+
+  const monthLabel = document.createElement("div");
+  monthLabel.className = "hk-calendar-month-label";
+
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "hk-calendar-nav";
+  nextBtn.textContent = "›";
+  nextBtn.setAttribute("aria-label", "Next month");
+
+  header.appendChild(prevBtn);
+  header.appendChild(monthLabel);
+  header.appendChild(nextBtn);
+  wrap.appendChild(header);
+
+  const dowRow = document.createElement("div");
+  dowRow.className = "hk-calendar-dow-row";
+  for (const dow of DOW_LABELS) {
     const d = document.createElement("div");
-    d.className = "hk-heatmap-dow";
+    d.className = "hk-calendar-dow";
     d.textContent = dow;
-    dowCol.appendChild(d);
+    dowRow.appendChild(d);
   }
-  scroll.appendChild(dowCol);
+  wrap.appendChild(dowRow);
 
-  const weeksWrap = document.createElement("div");
-  weeksWrap.className = "hk-heatmap-weeks";
-
-  const cursor = new Date(gridStart);
-  let lastMonth = -1;
-  while (cursor.getTime() <= gridEnd.getTime()) {
-    const weekCol = document.createElement("div");
-    weekCol.className = "hk-heatmap-week";
-
-    const monthSlot = document.createElement("div");
-    monthSlot.className = "hk-heatmap-month-slot";
-    if (cursor.getMonth() !== lastMonth) {
-      monthSlot.textContent = cursor.toLocaleDateString("en-US", { month: "short" });
-      lastMonth = cursor.getMonth();
-    }
-    weekCol.appendChild(monthSlot);
-
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(cursor);
-      const cell = document.createElement("div");
-      if (day.getTime() < gridStart.getTime() || day.getTime() > gridEnd.getTime()) {
-        cell.className = "hk-heatmap-cell empty";
-      } else {
-        const key = dateKey(day);
-        const count = countsByDate.get(key) ?? 0;
-        const intensity = count === 0 ? 0 : Math.min(4, Math.ceil((count / maxCount) * 4));
-        cell.className = `hk-heatmap-cell level-${intensity}`;
-        cell.dataset.date = key;
-        const dayLabel = day.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-        cell.title = `${dayLabel}: ${count} ${count === 1 ? "entry" : "entries"}`;
-      }
-      weekCol.appendChild(cell);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    weeksWrap.appendChild(weekCol);
-  }
-  scroll.appendChild(weeksWrap);
-  wrap.appendChild(scroll);
+  const grid = document.createElement("div");
+  grid.className = "hk-calendar-grid";
+  wrap.appendChild(grid);
 
   const legend = document.createElement("div");
   legend.className = "hk-heatmap-legend";
@@ -146,5 +121,75 @@ export function renderEvidenceHeatmap(evidence: Evidence[], now: Date = new Date
   legend.appendChild(more);
   wrap.appendChild(legend);
 
+  function renderMonth(): void {
+    monthLabel.textContent = new Date(cursorYear, cursorMonth, 1).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+    grid.innerHTML = "";
+
+    const startOffset = new Date(cursorYear, cursorMonth, 1).getDay(); // 0 = Sunday
+    const daysInMonth = new Date(cursorYear, cursorMonth + 1, 0).getDate();
+
+    for (let i = 0; i < startOffset; i++) {
+      const pad = document.createElement("div");
+      pad.className = "hk-calendar-cell hk-heatmap-cell empty";
+      grid.appendChild(pad);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(cursorYear, cursorMonth, day);
+      const key = dateKey(d);
+      const count = countsByDate.get(key) ?? 0;
+      const intensity = count === 0 ? 0 : Math.min(4, Math.ceil((count / maxCount) * 4));
+
+      const cell = document.createElement("div");
+      cell.className = `hk-calendar-cell hk-heatmap-cell level-${intensity}`;
+      cell.dataset.date = key;
+
+      const dayNum = document.createElement("span");
+      dayNum.className = "hk-calendar-daynum";
+      dayNum.textContent = String(day);
+      cell.appendChild(dayNum);
+
+      const dayLabel = d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+      cell.title = `${dayLabel}: ${count} ${count === 1 ? "entry" : "entries"}`;
+
+      if (count > 0) {
+        cell.tabIndex = 0;
+        cell.setAttribute("role", "button");
+        cell.setAttribute("aria-label", cell.title);
+        const activate = (): void => onDayClick(key);
+        cell.addEventListener("click", activate);
+        cell.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            activate();
+          }
+        });
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+
+  prevBtn.addEventListener("click", () => {
+    cursorMonth -= 1;
+    if (cursorMonth < 0) {
+      cursorMonth = 11;
+      cursorYear -= 1;
+    }
+    renderMonth();
+  });
+  nextBtn.addEventListener("click", () => {
+    cursorMonth += 1;
+    if (cursorMonth > 11) {
+      cursorMonth = 0;
+      cursorYear += 1;
+    }
+    renderMonth();
+  });
+
+  renderMonth();
   return wrap;
 }

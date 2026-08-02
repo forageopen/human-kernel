@@ -23,7 +23,7 @@
 
 import type { Evidence, HumanKernelIndex } from "../types.js";
 import type { ParseWarning } from "../evidence-parser/index.js";
-import { renderEvidenceHeatmap } from "./charts.js";
+import { renderCalendarHeatmap } from "./charts.js";
 import { makeDraggable } from "./draggable.js";
 
 export type ViewSource = "sample" | "own-vault";
@@ -135,22 +135,6 @@ function renderSourceBanner(viewing: ViewSource, callbacks: DashboardCallbacks):
   return banner;
 }
 
-/** Wires click-to-open on every day that actually has evidence - a day with
- * nothing recorded has nothing to show, so it stays inert (title/hover
- * tooltip only, same as before). */
-function wireHeatmapClicks(heatmapEl: HTMLElement, index: HumanKernelIndex, callbacks: DashboardCallbacks): void {
-  const cells = heatmapEl.querySelectorAll<HTMLElement>(".hk-heatmap-cell:not(.empty)");
-  for (const cell of cells) {
-    const dateKey = cell.dataset.date;
-    if (!dateKey || cell.classList.contains("level-0")) continue;
-    cell.style.cursor = "pointer";
-    onActivate(cell, () => {
-      const matches = index.evidence.filter((e) => e.timestamp.slice(0, 10) === dateKey);
-      callbacks.onOpenDate(dateKey, matches);
-    });
-  }
-}
-
 /** Renders the vault-reactive part only: source banner, optional rescan
  * toolbar, warnings, empty-state message, and the heatmap's content
  * (heatmapBody is the stable #hk-heatmap-body element inside the persistent
@@ -195,8 +179,10 @@ export function renderDashboard(
   }
 
   heatmapBody.innerHTML = "";
-  const heatmap = renderEvidenceHeatmap(index.evidence);
-  wireHeatmapClicks(heatmap, index, callbacks);
+  const heatmap = renderCalendarHeatmap(index.evidence, (dateKey) => {
+    const matches = index.evidence.filter((e) => e.timestamp.slice(0, 10) === dateKey);
+    callbacks.onOpenDate(dateKey, matches);
+  });
   heatmapBody.appendChild(heatmap);
 }
 
