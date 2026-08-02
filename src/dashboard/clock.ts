@@ -1,0 +1,62 @@
+// Live footer clock (2026-08-02, requested directly: "something kinetic in
+// the screen" now that the direction is a live dashboard). Text only, always
+// Asia/Kuala_Lumpur regardless of the visitor's own device timezone - this is
+// deliberately NOT "new Date().getMonth()" etc., which would read the
+// browser's local timezone instead. Intl.DateTimeFormat with an explicit
+// timeZone is the zero-dependency way to do this correctly; no date library
+// added (Chart.js remains the only CDN exception - see charts.ts).
+//
+// Split the same way charts.ts splits drawChart from renderEvidenceHeatmap:
+// formatKlDateTime is pure and fully unit-testable with fixed dates regardless
+// of the machine running the test; startLiveClock is the thin, timer-owning
+// side effect on top of it.
+
+const KL_TIMEZONE = "Asia/Kuala_Lumpur";
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** "Month day, Q#, year · HH:MM:SS" in Asia/Kuala_Lumpur, computed from the
+ * given instant - not from the caller's local clock. hourCycle:"h23" (not
+ * hour12:false) avoids a real Intl quirk where some engines format midnight
+ * as "24:00" instead of "00:00" under hour12:false. */
+export function formatKlDateTime(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: KL_TIMEZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === type)?.value ?? "";
+
+  const monthNum = Number(get("month"));
+  const day = get("day");
+  const year = get("year");
+  const hour = get("hour");
+  const minute = get("minute");
+  const second = get("second");
+
+  const monthName = MONTH_NAMES[monthNum - 1] ?? "";
+  const quarter = Math.min(4, Math.max(1, Math.ceil(monthNum / 3)));
+
+  return `${monthName} ${day}, Q${quarter}, ${year} · ${hour}:${minute}:${second}`;
+}
+
+/** Starts the ticking clock on the given element and returns a stop function.
+ * Ticks every second by default - visible motion, not a busy-loop (this is
+ * the one thing on an otherwise static page that moves on its own). */
+export function startLiveClock(el: HTMLElement, intervalMs = 1000): () => void {
+  const tick = (): void => {
+    el.textContent = formatKlDateTime(new Date());
+  };
+  tick();
+  const id = setInterval(tick, intervalMs);
+  return () => clearInterval(id);
+}

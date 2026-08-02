@@ -24,14 +24,6 @@ import {
   monthWithMostEvidence,
 } from "./charts.js";
 
-/** Brief v2 §9, quoted exactly: "Immersive mode: no scroll, ambient
- * command-center view. Observation only." / "Inspect mode: scroll enabled,
- * evidence drawer active. Investigation." Screen = awareness layer -> Drawer
- * = investigation layer -> Evidence = verification layer. This type is UI
- * state, not part of the canonical data model, so it lives here and not in
- * types.ts. */
-export type DashboardMode = "immersive" | "inspect";
-
 /** Which data the dashboard is currently showing - the bundled public
  * reference profile, or a real vault the visitor picked themselves. Also UI
  * state, not canonical data. */
@@ -68,9 +60,9 @@ export function renderEmptyState(root: HTMLElement, onPickVault: () => void): vo
   root.appendChild(box);
 }
 
-/** Dismissible toast, bottom-right - used for the Immersive lock prompt and
- * for anything else that needs to say something without taking over the
- * page (Brief v2 §9 already established this position/shape for the drawer). */
+/** Dismissible toast, bottom-right - for anything that needs to say
+ * something (e.g. "this browser can't open a vault folder") without taking
+ * over the page, in the same position/shape as the evidence drawer. */
 export function renderNotice(root: HTMLElement, message: string): void {
   let toast = root.querySelector<HTMLElement>(".hk-lock-toast");
   if (!toast) {
@@ -128,26 +120,8 @@ function renderParameterCard(param: Parameter, onOpen: (param: Parameter) => voi
 export interface DashboardCallbacks {
   onOpenParameter: (param: Parameter) => void;
   onRescan: () => void;
-  onModeChange: (mode: DashboardMode) => void;
   onConnectOwnVault: () => void;
   onViewSample: () => void;
-}
-
-function renderModeToggle(mode: DashboardMode, onModeChange: (mode: DashboardMode) => void): HTMLElement {
-  const wrap = document.createElement("div");
-  wrap.className = "hk-mode-toggle";
-  (["immersive", "inspect"] as const).forEach((m) => {
-    const btn = document.createElement("button");
-    btn.className = "hk-mode-btn" + (mode === m ? " active" : "");
-    btn.textContent = m === "immersive" ? "Immersive" : "Inspect";
-    btn.title =
-      m === "immersive"
-        ? "Observation only - no scroll, drawer closed (Brief v2 §9)"
-        : "Investigation - scroll and evidence drawer enabled (Brief v2 §9)";
-    btn.addEventListener("click", () => onModeChange(m));
-    wrap.appendChild(btn);
-  });
-  return wrap;
 }
 
 /** Says whose data is on screen and offers the one alternative action - this
@@ -193,11 +167,10 @@ function renderChartCard(titleText: string, canvasId: string): { card: HTMLEleme
   return { card, canvas };
 }
 
-/** The overview section: one calendar heatmap + five chart cards, all
+/** The overview section: one calendar heatmap + six chart cards, all
  * derived from real Evidence/Parameter/Relationship fields (see charts.ts's
  * own header comment for why no chart here invents a data axis). Sits above
- * the domain-grouped detail grid - overview first, drill-down after, same
- * awareness-before-investigation ordering as the Immersive/Inspect split. */
+ * the domain-grouped detail grid - overview first, drill-down after. */
 function renderOverview(index: HumanKernelIndex): HTMLElement {
   const section = document.createElement("div");
   section.className = "hk-overview";
@@ -240,37 +213,31 @@ function renderOverview(index: HumanKernelIndex): HTMLElement {
 }
 
 /** Renders the populated dashboard: profile overview (heatmap + charts),
- * domain-grouped Parameter cards, warnings, if any.
- * `mode` only controls presentation here (toggle state, scroll-lock class, cursor
- * affordance on cards) - app.ts owns the actual behavioral gating of whether a
- * card click is allowed to open the evidence drawer (Immersive = "observation
- * only", Brief v2 §9). `viewing` says whether this is the bundled reference
- * profile or a real connected vault. */
+ * domain-grouped Parameter cards, warnings, if any. Scrolling is always on -
+ * there is no ambient/no-scroll mode (removed 2026-08-02; see CHANGELOG).
+ * `viewing` says whether this is the bundled reference profile or a real
+ * connected vault. */
 export function renderDashboard(
   root: HTMLElement,
   index: HumanKernelIndex,
   warnings: ParseWarning[],
-  mode: DashboardMode,
   viewing: ViewSource,
   callbacks: DashboardCallbacks
 ): void {
   root.innerHTML = "";
-  document.body.classList.toggle("hk-immersive", mode === "immersive");
 
   root.appendChild(renderSourceBanner(viewing, callbacks));
 
-  const toolbar = document.createElement("div");
-  toolbar.className = "hk-toolbar";
-  toolbar.appendChild(renderModeToggle(mode, callbacks.onModeChange));
-
   if (viewing === "own-vault") {
+    const toolbar = document.createElement("div");
+    toolbar.className = "hk-toolbar";
     const rescanBtn = document.createElement("button");
     rescanBtn.className = "hk-primary";
     rescanBtn.textContent = "Re-scan Vault";
     rescanBtn.addEventListener("click", callbacks.onRescan);
     toolbar.appendChild(rescanBtn);
+    root.appendChild(toolbar);
   }
-  root.appendChild(toolbar);
 
   if (warnings.length > 0) {
     root.appendChild(renderWarningsPanel(warnings));
@@ -302,7 +269,7 @@ export function renderDashboard(
   root.appendChild(detailHeading);
 
   const grid = document.createElement("div");
-  grid.className = "hk-grid " + mode; // mode class only drives cursor affordance (CSS) - see styles.css
+  grid.className = "hk-grid";
   for (const [domain, params] of byDomain) {
     const card = document.createElement("div");
     card.className = "hk-card";
@@ -361,42 +328,4 @@ export function renderDrawer(
 export function closeDrawer(root: HTMLElement): void {
   const drawer = root.querySelector<HTMLElement>(".hk-drawer");
   drawer?.classList.remove("active");
-}
-
-/** Immersive mode is "observation only" (Brief v2 §9) - clicking a card must
- * not just silently do nothing. This says why, and lets you act on it in one
- * click rather than making you find the mode toggle yourself. */
-export function renderImmersiveLockPrompt(root: HTMLElement, onSwitchToInspect: () => void): void {
-  let toast = root.querySelector<HTMLElement>(".hk-lock-toast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.className = "hk-lock-toast";
-    root.appendChild(toast);
-  }
-  toast.innerHTML = "";
-
-  const msg = document.createElement("div");
-  msg.textContent = "Immersive mode is observation only - evidence isn't reachable here.";
-  toast.appendChild(msg);
-
-  const btn = document.createElement("button");
-  btn.className = "hk-lock-toast-btn";
-  btn.textContent = "Switch to Inspect";
-  btn.addEventListener("click", onSwitchToInspect);
-  toast.appendChild(btn);
-
-  const closeBtn = document.createElement("span");
-  closeBtn.className = "hk-close";
-  closeBtn.textContent = "×";
-  closeBtn.addEventListener("click", () => toast?.classList.remove("active"));
-  toast.appendChild(closeBtn);
-
-  toast.classList.add("active");
-}
-
-/** Dismisses the Immersive lock prompt - mirrors closeDrawer(). Also called
- * automatically by renderDashboard's own root.innerHTML reset on re-render. */
-export function closeImmersiveLockPrompt(root: HTMLElement): void {
-  const toast = root.querySelector<HTMLElement>(".hk-lock-toast");
-  toast?.classList.remove("active");
 }

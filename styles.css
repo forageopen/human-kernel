@@ -67,18 +67,6 @@ body {
 }
 .hk-link-btn:hover { color: var(--text-strong); }
 
-/* Immersive/Inspect (Brief v2 SS9): Immersive = ambient/observation only, no
-   scroll; Inspect = investigation, scroll + drawer enabled. */
-body.hk-immersive { overflow: hidden; }
-.hk-mode-toggle { display: flex; gap: 6px; }
-.hk-mode-btn {
-  background: transparent; border: 1px solid var(--border-hint); color: var(--stone);
-  padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 11px; font-family: var(--font-heading);
-  text-transform: uppercase; letter-spacing: 0.1em;
-}
-.hk-mode-btn.active { border-color: var(--ember); color: var(--ember); background: rgba(200, 169, 110, 0.08); }
-.hk-grid.immersive .hk-param-card { cursor: default; }
-
 .hk-card {
   background: var(--card); border: 1px solid var(--border-hint);
   border-radius: 14px; padding: 18px; margin-bottom: 16px;
@@ -90,8 +78,7 @@ body.hk-immersive { overflow: hidden; }
 }
 
 /* Profile overview: heatmap card + 6-up chart grid (2026-08-02 rebuild).
-   Sits above the domain-grouped detail grid - awareness before drill-down,
-   same ordering principle as Immersive-before-Inspect. */
+   Sits above the domain-grouped detail grid - overview before drill-down. */
 .hk-overview { margin-bottom: 28px; }
 .hk-overview-heading { margin-top: 6px; }
 
@@ -162,8 +149,8 @@ body.hk-immersive { overflow: hidden; }
 .hk-src { color: var(--ember); font-family: var(--font-mono); font-size: 11.5px; }
 .hk-meta { color: var(--stone); font-size: 11px; font-family: var(--font-mono); }
 
-/* Immersive-mode lock prompt: clicking a card in Immersive no longer does
-   nothing silently - this tells you why, and lets you act on it immediately. */
+/* Generic dismissible toast (renderNotice) - e.g. "this browser can't open a
+   vault folder." Same position/shape the evidence drawer uses. */
 .hk-lock-toast {
   position: fixed; right: 25px; bottom: 25px; max-width: 340px;
   background: var(--card-alt); border: 1px solid var(--crimson); border-radius: 12px;
@@ -184,3 +171,11 @@ body.hk-immersive { overflow: hidden; }
 }
 .hk-footer a { color: var(--ember); text-decoration: none; }
 .hk-footer a:hover { text-decoration: underline; }
+
+/* Live clock (Asia/Kuala_Lumpur) - text only, the one element that visibly
+   moves on its own. tabular-nums keeps the ticking seconds from jittering
+   the layout as digit widths change. */
+.hk-clock {
+  margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--stone);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}

@@ -31,9 +31,7 @@ import {
   renderDashboard,
   renderDrawer,
   closeDrawer,
-  renderImmersiveLockPrompt,
   renderNotice,
-  type DashboardMode,
   type ViewSource,
 } from "./render.js";
 
@@ -113,8 +111,6 @@ export async function wireBrowserUI(root: HTMLElement): Promise<void> {
   let currentIndex: HumanKernelIndex | null = null;
   let currentWarnings: ParseWarning[] = [];
   let currentVaultHandle: FileSystemDirectoryHandle | null = null;
-  // Brief v2 §9: Immersive is the ambient/awareness-layer view - lands here first.
-  let mode: DashboardMode = "immersive";
   let viewing: ViewSource = "sample";
 
   const deps: VaultScanDeps = {
@@ -126,35 +122,16 @@ export async function wireBrowserUI(root: HTMLElement): Promise<void> {
   };
 
   // Re-renders from whatever was last loaded/scanned, without re-reading
-  // anything - used for mode toggles and view switches so those never
-  // trigger a re-fetch or re-scan.
+  // anything - used for view switches so those never trigger a re-fetch or
+  // re-scan.
   function renderCurrent(): void {
     if (!currentIndex) return;
-    renderDashboard(root, currentIndex, currentWarnings, mode, viewing, {
+    renderDashboard(root, currentIndex, currentWarnings, viewing, {
       onOpenParameter: (param: Parameter) => {
-        // Brief v2 §9, quoted exactly: "Immersive mode: ... Observation only."
-        // Investigation (the drawer) is Inspect-mode-only - enforced here, not
-        // just in the CSS, so this holds even if a click reaches the handler.
-        if (mode === "inspect" && currentIndex) {
-          renderDrawer(root, param, currentIndex, () => closeDrawer(root));
-          return;
-        }
-        // Immersive: don't silently do nothing on click - say why, and let
-        // one more click both switch mode and open the evidence that was
-        // actually asked for, instead of dropping the user back at square one.
-        renderImmersiveLockPrompt(root, () => {
-          mode = "inspect";
-          renderCurrent();
-          if (currentIndex) renderDrawer(root, param, currentIndex, () => closeDrawer(root));
-        });
+        if (currentIndex) renderDrawer(root, param, currentIndex, () => closeDrawer(root));
       },
       onRescan: () => {
         void scanAndRender();
-      },
-      onModeChange: (newMode) => {
-        mode = newMode;
-        if (mode === "immersive") closeDrawer(root); // re-entering observation-only closes any open investigation
-        renderCurrent();
       },
       onConnectOwnVault: () => {
         void handlePickVault();

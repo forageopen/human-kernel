@@ -7,8 +7,6 @@ import {
   renderDashboard,
   renderDrawer,
   closeDrawer,
-  renderImmersiveLockPrompt,
-  closeImmersiveLockPrompt,
   type DashboardCallbacks,
 } from "./render.js";
 import type { HumanKernelIndex, Parameter } from "../types.js";
@@ -48,7 +46,6 @@ function makeCallbacks(overrides?: Partial<DashboardCallbacks>): DashboardCallba
   return {
     onOpenParameter: vi.fn(),
     onRescan: vi.fn(),
-    onModeChange: vi.fn(),
     onConnectOwnVault: vi.fn(),
     onViewSample: vi.fn(),
     ...overrides,
@@ -99,7 +96,7 @@ describe("renderDashboard", () => {
     const index = makeIndex();
     const callbacks = makeCallbacks();
 
-    renderDashboard(root, index, [], "inspect", "own-vault", callbacks);
+    renderDashboard(root, index, [], "own-vault", callbacks);
 
     const domainLabels = Array.from(root.querySelectorAll(".hk-label")).map((el) => el.textContent);
     expect(domainLabels).toContain("DOMAIN: HUMAN");
@@ -116,7 +113,7 @@ describe("renderDashboard", () => {
       { sourceFile: "a.md", sourceRef: "callout#1", message: "bad domain" },
       { sourceFile: "b.md", sourceRef: "callout#2", message: "bad confidence" },
     ];
-    renderDashboard(root, makeIndex(), warnings, "inspect", "own-vault", makeCallbacks());
+    renderDashboard(root, makeIndex(), warnings, "own-vault", makeCallbacks());
 
     const rows = root.querySelectorAll(".hk-warn-row");
     expect(rows.length).toBe(2);
@@ -124,36 +121,50 @@ describe("renderDashboard", () => {
 
   it("shows an explicit empty message instead of a blank grid when there are no parameters", () => {
     const root = document.createElement("div");
-    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "inspect", "own-vault", makeCallbacks());
+    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "own-vault", makeCallbacks());
     expect(root.textContent).toMatch(/no \[!evidence\] blocks were found/i);
   });
 
   it("shows the sample-specific empty message when viewing the reference profile", () => {
     const root = document.createElement("div");
-    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "inspect", "sample", makeCallbacks());
+    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "sample", makeCallbacks());
     expect(root.textContent).toMatch(/reference profile is still being prepared/i);
   });
 
   it("wires the rescan button to onRescan, and only shows it for a connected vault", () => {
     const root = document.createElement("div");
     const callbacks = makeCallbacks();
-    renderDashboard(root, makeIndex(), [], "inspect", "own-vault", callbacks);
+    renderDashboard(root, makeIndex(), [], "own-vault", callbacks);
     const rescanBtn = root.querySelector<HTMLElement>(".hk-toolbar .hk-primary");
     expect(rescanBtn).not.toBeNull();
     rescanBtn?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(callbacks.onRescan).toHaveBeenCalledTimes(1);
 
     const sampleRoot = document.createElement("div");
-    renderDashboard(sampleRoot, makeIndex(), [], "inspect", "sample", makeCallbacks());
-    expect(sampleRoot.querySelector(".hk-toolbar .hk-primary")).toBeNull();
+    renderDashboard(sampleRoot, makeIndex(), [], "sample", makeCallbacks());
+    expect(sampleRoot.querySelector(".hk-toolbar")).toBeNull();
   });
 
   it("renders the profile overview (heatmap + chart grid) above the domain grid when parameters exist", () => {
     const root = document.createElement("div");
-    renderDashboard(root, makeIndex(), [], "inspect", "sample", makeCallbacks());
+    renderDashboard(root, makeIndex(), [], "sample", makeCallbacks());
     expect(root.querySelector(".hk-overview")).not.toBeNull();
     expect(root.querySelector(".hk-heatmap-card")).not.toBeNull();
     expect(root.querySelectorAll(".hk-chart-card").length).toBe(6);
+  });
+
+  it("opens the evidence drawer directly on card click - no mode gating (removed 2026-08-02)", () => {
+    const root = document.createElement("div");
+    const index = makeIndex();
+    renderDashboard(root, index, [], "own-vault", {
+      onOpenParameter: (param) => renderDrawer(root, param, index, () => closeDrawer(root)),
+      onRescan: vi.fn(),
+      onConnectOwnVault: vi.fn(),
+      onViewSample: vi.fn(),
+    });
+
+    root.querySelector<HTMLElement>(".hk-param-card")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(root.querySelector(".hk-drawer")?.classList.contains("active")).toBe(true);
   });
 });
 
@@ -161,7 +172,7 @@ describe("renderDashboard source banner (view: sample vs. own-vault)", () => {
   it("sample view: names the reference profile and offers to connect a vault", () => {
     const root = document.createElement("div");
     const callbacks = makeCallbacks();
-    renderDashboard(root, makeIndex(), [], "inspect", "sample", callbacks);
+    renderDashboard(root, makeIndex(), [], "sample", callbacks);
 
     expect(root.querySelector(".hk-source-banner")?.textContent).toMatch(/reference profile/i);
     root.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
@@ -171,75 +182,11 @@ describe("renderDashboard source banner (view: sample vs. own-vault)", () => {
   it("own-vault view: says a vault is connected and offers to view the sample instead", () => {
     const root = document.createElement("div");
     const callbacks = makeCallbacks();
-    renderDashboard(root, makeIndex(), [], "inspect", "own-vault", callbacks);
+    renderDashboard(root, makeIndex(), [], "own-vault", callbacks);
 
     expect(root.querySelector(".hk-source-banner")?.textContent).toMatch(/your own vault is connected/i);
     root.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(callbacks.onViewSample).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("renderDashboard mode toggle (Brief v2 §9: Immersive/Inspect)", () => {
-  it("marks the current mode's button active and the other one not", () => {
-    const root = document.createElement("div");
-    renderDashboard(root, makeIndex(), [], "immersive", "own-vault", makeCallbacks());
-    const buttons = Array.from(root.querySelectorAll<HTMLElement>(".hk-mode-btn"));
-    const immersiveBtn = buttons.find((b) => b.textContent === "Immersive");
-    const inspectBtn = buttons.find((b) => b.textContent === "Inspect");
-    expect(immersiveBtn?.classList.contains("active")).toBe(true);
-    expect(inspectBtn?.classList.contains("active")).toBe(false);
-  });
-
-  it("calls onModeChange with the clicked mode", () => {
-    const root = document.createElement("div");
-    const callbacks = makeCallbacks();
-    renderDashboard(root, makeIndex(), [], "immersive", "own-vault", callbacks);
-    const inspectBtn = Array.from(root.querySelectorAll<HTMLElement>(".hk-mode-btn")).find(
-      (b) => b.textContent === "Inspect"
-    );
-    inspectBtn?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(callbacks.onModeChange).toHaveBeenCalledWith("inspect");
-  });
-
-  it("applies the scroll-lock class to body only in immersive mode", () => {
-    const root = document.createElement("div");
-    renderDashboard(root, makeIndex(), [], "immersive", "own-vault", makeCallbacks());
-    expect(document.body.classList.contains("hk-immersive")).toBe(true);
-
-    renderDashboard(root, makeIndex(), [], "inspect", "own-vault", makeCallbacks());
-    expect(document.body.classList.contains("hk-immersive")).toBe(false);
-  });
-});
-
-describe("renderImmersiveLockPrompt / closeImmersiveLockPrompt", () => {
-  it("shows a prompt instead of doing nothing when evidence is blocked", () => {
-    const root = document.createElement("div");
-    renderImmersiveLockPrompt(root, vi.fn());
-    const toast = root.querySelector(".hk-lock-toast");
-    expect(toast?.classList.contains("active")).toBe(true);
-    expect(toast?.textContent).toMatch(/observation only/i);
-  });
-
-  it("calls onSwitchToInspect when its own action button is clicked", () => {
-    const root = document.createElement("div");
-    const onSwitchToInspect = vi.fn();
-    renderImmersiveLockPrompt(root, onSwitchToInspect);
-    root.querySelector<HTMLElement>(".hk-lock-toast-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(onSwitchToInspect).toHaveBeenCalledTimes(1);
-  });
-
-  it("closeImmersiveLockPrompt removes the active class without destroying the toast", () => {
-    const root = document.createElement("div");
-    renderImmersiveLockPrompt(root, vi.fn());
-    closeImmersiveLockPrompt(root);
-    expect(root.querySelector(".hk-lock-toast")?.classList.contains("active")).toBe(false);
-  });
-
-  it("the toast's own close control also dismisses it", () => {
-    const root = document.createElement("div");
-    renderImmersiveLockPrompt(root, vi.fn());
-    root.querySelector<HTMLElement>(".hk-lock-toast .hk-close")?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(root.querySelector(".hk-lock-toast")?.classList.contains("active")).toBe(false);
   });
 });
 

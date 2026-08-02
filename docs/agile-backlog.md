@@ -28,9 +28,11 @@ Estimates are Fibonacci story points, not hours. Every story's acceptance criter
 
 | Story | Points | Tag | Acceptance Criteria |
 |---|---|---|---|
-| 3.1 Immersive/Inspect mode toggle + scroll lock | 2 | **[MVD]** | Matches Draft 5's validated interaction model (Brief v2 §9). |
+| 3.1 Immersive/Inspect mode toggle + scroll lock | 2 | **[Removed]** — **see correction below** | Matches Draft 5's validated interaction model (Brief v2 §9). |
 | 3.2 Card grid layout | 3 | **[MVD]** | Renders at least one real card type from live `Parameter` data, not hardcoded values. |
 | 3.3 Evidence drawer component | 5 | **[MVD]** | Opening a card shows its linked Evidence list — source file, confidence, timestamp (wireframe state 5, `human-kernel-wireframes-data-states.html`). |
+
+> **Correction (2026-08-02, second pass, directed by Adam):** 3.1 was built, shipped, and confirmed live earlier the same day, then removed the same day. Two real reasons, not just a preference change: (1) the profile-overview section (heatmap + 6 charts, added between the build and the removal) doesn't fit one viewport at any reasonable size, so "no scroll, ambient command-center view" stopped being achievable the moment that section existed — Immersive mode would have had to hide most of the page's own content to keep its own premise true. (2) Live verification found the scroll lock was already incomplete before that: `body.hk-immersive { overflow: hidden; }` only targeted `<body>`, not `<html>`, so page scroll wasn't actually fully blocked in the shipped version — the toggle was telling visitors something the CSS wasn't fully doing. Direct instruction: "lets remove immersive & inspect since rn scrolling must be active by default." Removed `DashboardMode`, the mode toggle, the Immersive lock prompt, and the `hk-immersive` body class outright — not hidden behind a flag. Scrolling is simply always on; the evidence drawer opens directly on card click with no mode gating.
 
 ## EPIC-4: Visualizations Bound to Real Data
 
@@ -79,4 +81,4 @@ Estimates are Fibonacci story points, not hours. Every story's acceptance criter
 
 Stories 1.1 → 1.4 → 2.1 → 2.2 → 2.4 → 3.1 → 3.2 → 3.3 → 4.1, in that dependency order, is the shortest real path to "open a vault, see one real evidence-backed card, inspect it." That's 3+8+3+5+3+2+3+5+5 = **37 points** of critical-path work. Everything else in this backlog can happen before or after that path without blocking the demo.
 
-**Status (2026-08-02):** all 9 critical-path stories are now built and unit-tested — 1.1/1.4/2.1/2.2/2.4 in `src/`, 3.1 (Immersive/Inspect toggle, Brief v2 §9) and 3.2/3.3 (card grid + evidence drawer) in `src/dashboard/`, 4.1 done under its honest name ("Domain view," not SWOT — see the correction note above). No manual browser click-through with a real vault yet — see `src/dashboard/README.md`.
+**Status (2026-08-02):** critical-path stories built and unit-tested — 1.1/1.4/2.1/2.2/2.4 in `src/`, 3.2/3.3 (card grid + evidence drawer) in `src/dashboard/`, 4.1 done under its honest name ("Domain view," not SWOT — see the correction note above). 3.1 (Immersive/Inspect) was built, then removed the same day — see its correction note above. A manual browser click-through of the bundled reference profile (fetch path, not a real picked vault) has now been done live on the deployed site; the File System Access vault-picker flow itself is still unconfirmed by a human click-through — see `src/dashboard/README.md`.
