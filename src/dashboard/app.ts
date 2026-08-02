@@ -22,8 +22,19 @@
 // renderEmptyState()/renderUnsupportedBrowser() (render.ts) are still
 // exported and unit-tested but are no longer called from this file - a
 // full-page takeover doesn't fit a flow that always has something to show.
+//
+// Widget canvas split (fifth pass): wireBrowserUI now also takes the stable
+// heatmapBody and drawerEl elements (see index.html/main.ts) so render.ts's
+// renderDashboard can update just the vault-reactive parts without ever
+// touching the persistent widget canvas around them - see render.ts's own
+// top-of-file note for why that separation matters (it's what keeps the
+// prayer/time-window/notepad widgets from being silently orphaned on every
+// vault switch or rescan). Evidence detail now opens by DATE, not by
+// Parameter, since heatmap cells are what's clickable now, not Parameter
+// cards - onOpenDate builds a human date label and hands the day's real
+// Evidence straight to renderDrawer.
 
-import type { HumanKernelIndex, Parameter } from "../types.js";
+import type { Evidence, HumanKernelIndex } from "../types.js";
 import { parseVaultFile, type ParseWarning } from "../evidence-parser/index.js";
 import { compile } from "../compiler/index.js";
 import { serialize, writeIndex } from "../store/index.js";
@@ -48,6 +59,11 @@ export interface VaultScanDeps {
 export interface VaultScanResult {
   index: HumanKernelIndex;
   warnings: ParseWarning[];
+}
+
+export interface ProfileStatEls {
+  evidence: HTMLElement;
+  parameters: HTMLElement;
 }
 
 const EMPTY_INDEX: HumanKernelIndex = {
@@ -104,10 +120,27 @@ export async function loadSampleIndex(basePath = "sample-data/index.json"): Prom
   }
 }
 
+function formatDateLabel(dateKey: string): string {
+  const d = new Date(`${dateKey}T00:00:00`);
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
 /** Browser glue. Not unit tested (needs a real window/document + real user
  * gesture for the folder picker, plus a real fetch of the bundled sample) -
- * kept intentionally thin so the untested surface area is as small as possible. */
-export async function wireBrowserUI(root: HTMLElement): Promise<void> {
+ * kept intentionally thin so the untested surface area is as small as possible.
+ *
+ * `heatmapBody` and `drawerEl` are stable elements owned by index.html/main.ts
+ * (see render.ts's top-of-file note) - this function never recreates them,
+ * only asks render.ts to fill them. `statEls`, if given, gets the visitor-
+ * facing "N evidence entries / N parameters tracked" counts kept in sync on
+ * every render - optional so callers/tests that don't care about the profile
+ * header stats aren't forced to wire them up. */
+export async function wireBrowserUI(
+  root: HTMLElement,
+  heatmapBody: HTMLElement,
+  drawerEl: HTMLElement,
+  statEls?: ProfileStatEls
+): Promise<void> {
   let currentIndex: HumanKernelIndex | null = null;
   let currentWarnings: ParseWarning[] = [];
   let currentVaultHandle: FileSystemDirectoryHandle | null = null;
@@ -126,9 +159,10 @@ export async function wireBrowserUI(root: HTMLElement): Promise<void> {
   // re-scan.
   function renderCurrent(): void {
     if (!currentIndex) return;
-    renderDashboard(root, currentIndex, currentWarnings, viewing, {
-      onOpenParameter: (param: Parameter) => {
-        if (currentIndex) renderDrawer(root, param, currentIndex, () => closeDrawer(root));
+    const index = currentIndex;
+    renderDashboard(root, heatmapBody, index, currentWarnings, viewing, {
+      onOpenDate: (dateKey: string, evidenceThatDay: Evidence[]) => {
+        renderDrawer(drawerEl, formatDateLabel(dateKey), evidenceThatDay, () => closeDrawer(drawerEl));
       },
       onRescan: () => {
         void scanAndRender();
@@ -140,6 +174,10 @@ export async function wireBrowserUI(root: HTMLElement): Promise<void> {
         void loadSampleAndRender();
       },
     });
+    if (statEls) {
+      statEls.evidence.textContent = String(index.evidence.length);
+      statEls.parameters.textContent = String(index.parameters.length);
+    }
   }
 
   async function loadSampleAndRender(): Promise<void> {
@@ -163,7 +201,7 @@ export async function wireBrowserUI(root: HTMLElement): Promise<void> {
     if (!isBrowserSupported()) {
       renderNotice(
         root,
-        "Connecting your own vault needs Chrome, Edge, or Brave (ADR-0003) - the File System Access API isn't available here. The reference profile above still works in this browser."
+        "Connecting your own notes needs Chrome, Edge, or Brave - this browser doesn't support it yet. The example profile above still works here."
       );
       return;
     }

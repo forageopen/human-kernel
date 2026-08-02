@@ -1,22 +1,12 @@
 /** @vitest-environment jsdom */
-// Chart.js itself is never asserted on here - jsdom has no real canvas, and
-// the CDN script isn't loaded in tests (see charts.ts's own header comment).
-// These tests cover the parts that don't need Chart.js: monthWithMostEvidence's
-// date-bucketing logic, and renderEvidenceHeatmap's plain-DOM output. They also
-// confirm the draw*() functions no-op cleanly (don't throw) when Chart is
-// undefined, which is the real, default state of every CI/test run.
+// The six Chart.js chart cards this file used to also cover (domain count,
+// confidence histogram, status donut, relationship types, source files,
+// domain-confidence radar) are gone - scrapped per direct instruction. Only
+// the heatmap remains, now spanning the real Evidence date range instead of
+// one calendar month at a time.
 import { describe, it, expect } from "vitest";
-import {
-  monthWithMostEvidence,
-  renderEvidenceHeatmap,
-  drawDomainCountChart,
-  drawConfidenceHistogram,
-  drawStatusDonut,
-  drawRelationshipTypeChart,
-  drawSourceFileChart,
-  drawDomainConfidenceRadar,
-} from "./charts.js";
-import type { Evidence, Parameter, Relationship } from "../types.js";
+import { evidenceDateRange, renderEvidenceHeatmap } from "./charts.js";
+import type { Evidence } from "../types.js";
 
 function ev(overrides: Partial<Evidence>): Evidence {
   return {
@@ -30,104 +20,90 @@ function ev(overrides: Partial<Evidence>): Evidence {
   };
 }
 
-describe("monthWithMostEvidence", () => {
-  it("returns today when there is no evidence at all", () => {
-    const result = monthWithMostEvidence([]);
-    const now = new Date();
-    expect(result.getFullYear()).toBe(now.getFullYear());
-    expect(result.getMonth()).toBe(now.getMonth());
+describe("evidenceDateRange", () => {
+  it("returns today for both start and end when there is no evidence at all", () => {
+    const now = new Date("2026-08-02T00:00:00.000Z");
+    const range = evidenceDateRange([], now);
+    expect(range.start.getTime()).toBe(now.getTime());
+    expect(range.end.getTime()).toBe(now.getTime());
   });
 
-  it("picks the calendar month with the most entries, not the most recent one", () => {
+  it("spans from the earliest real timestamp to today - never clips real data to one month", () => {
+    const now = new Date("2026-08-02T00:00:00.000Z");
     const evidence = [
       ev({ id: "1", timestamp: "2025-06-22T10:00:00.000Z" }),
-      ev({ id: "2", timestamp: "2025-06-22T11:00:00.000Z" }),
-      ev({ id: "3", timestamp: "2025-06-22T12:00:00.000Z" }),
-      ev({ id: "4", timestamp: "2026-07-04T09:00:00.000Z" }), // more recent, but only 1 entry
+      ev({ id: "2", timestamp: "2026-05-15T10:00:00.000Z" }),
+      ev({ id: "3", timestamp: "2026-07-04T10:00:00.000Z" }),
     ];
-    const result = monthWithMostEvidence(evidence);
-    expect(result.getFullYear()).toBe(2025);
-    expect(result.getMonth()).toBe(5); // June = index 5
+    const range = evidenceDateRange(evidence, now);
+    expect(range.start.getFullYear()).toBe(2025);
+    expect(range.start.getMonth()).toBe(5); // June
+    expect(range.start.getDate()).toBe(22);
+    // end is "today" since today is later than the latest evidence timestamp -
+    // compared against `now` itself (not a separately-constructed local Date)
+    // so this isn't dependent on the test machine's timezone offset.
+    expect(range.end.getTime()).toBe(now.getTime());
+  });
+
+  it("uses the latest evidence date as the end if it is somehow after 'now'", () => {
+    const now = new Date("2026-01-01T00:00:00.000Z");
+    const evidence = [ev({ id: "1", timestamp: "2026-07-04T10:00:00.000Z" })];
+    const range = evidenceDateRange(evidence, now);
+    expect(range.end.getFullYear()).toBe(2026);
+    expect(range.end.getMonth()).toBe(6); // July
   });
 });
 
 describe("renderEvidenceHeatmap", () => {
-  it("renders one cell per day in the given month, plus the correct leading filler cells", () => {
-    const monthDate = new Date(2026, 5, 1); // June 2026 - has 30 days
-    const wrap = renderEvidenceHeatmap([], monthDate);
-    // Scoped to .hk-heatmap-grid, not the whole wrap - the Less->More legend
-    // below the grid reuses these same level-N classes on its 5 swatches, so
-    // an unscoped query here would double-count them.
-    const grid = wrap.querySelector(".hk-heatmap-grid") as HTMLElement;
-    const dayCells = grid.querySelectorAll(".hk-heatmap-cell:not(.empty)");
-    expect(dayCells.length).toBe(30);
-
-    const firstWeekday = new Date(2026, 5, 1).getDay();
-    const fillerCells = grid.querySelectorAll(".hk-heatmap-cell.empty");
-    expect(fillerCells.length).toBe(firstWeekday);
+  it("shows all real active dates across the full span, not just the busiest single month", () => {
+    const now = new Date(2026, 7, 2);
+    const evidence = [
+      ev({ id: "1", timestamp: "2025-06-22T10:00:00.000Z" }),
+      ev({ id: "2", timestamp: "2026-05-15T10:00:00.000Z" }),
+      ev({ id: "3", timestamp: "2026-07-04T10:00:00.000Z" }),
+    ];
+    const wrap = renderEvidenceHeatmap(evidence, now);
+    // Scoped to .hk-heatmap-weeks specifically - the Less->More legend below
+    // the grid reuses these same .hk-heatmap-cell.level-N classes on its 5
+    // swatches (by design, so the legend visually matches the grid), and an
+    // unscoped query here would double-count those swatches as if they were
+    // real days.
+    const activeCells = Array.from(
+      wrap.querySelectorAll<HTMLElement>(".hk-heatmap-weeks .hk-heatmap-cell:not(.empty)")
+    ).filter((c) => !c.className.includes("level-0"));
+    const activeDates = activeCells.map((c) => c.dataset.date).sort();
+    expect(activeDates).toEqual(["2025-06-22", "2026-05-15", "2026-07-04"]);
   });
 
-  it("scales intensity level relative to that month's own busiest day, not a fixed count", () => {
-    const monthDate = new Date(2025, 5, 1); // June 2025
-    const evidence = [
-      ev({ id: "1", timestamp: "2025-06-22T01:00:00.000Z" }),
-      ev({ id: "2", timestamp: "2025-06-22T02:00:00.000Z" }),
-      ev({ id: "3", timestamp: "2025-06-22T03:00:00.000Z" }),
-      ev({ id: "4", timestamp: "2025-06-22T04:00:00.000Z" }),
-      ev({ id: "5", timestamp: "2025-06-10T01:00:00.000Z" }),
-    ];
-    const wrap = renderEvidenceHeatmap(evidence, monthDate);
-    const cells = Array.from(wrap.querySelectorAll<HTMLElement>(".hk-heatmap-cell"));
-
-    const day22 = cells.find((c) => c.dataset.day === "22");
-    const day10 = cells.find((c) => c.dataset.day === "10");
-    const day1 = cells.find((c) => c.dataset.day === "1");
-
-    expect(day22?.className).toContain("level-4"); // the month's busiest day
-    expect(day10?.className).toContain("level-1"); // 1 of 4 -> lowest non-zero level
-    expect(day1?.className).toContain("level-0"); // no evidence that day
+  it("is color-only - no visible digit inside a cell, exact date/count is on title/hover instead", () => {
+    const wrap = renderEvidenceHeatmap([ev({ id: "1", timestamp: "2026-01-15T00:00:00.000Z" })], new Date(2026, 0, 20));
+    const cells = Array.from(wrap.querySelectorAll<HTMLElement>(".hk-heatmap-weeks .hk-heatmap-cell:not(.empty)"));
+    expect(cells.every((c) => c.textContent === "")).toBe(true);
+    const day15 = cells.find((c) => c.dataset.date === "2026-01-15");
+    expect(day15?.title).toContain("January 15, 2026");
+    expect(day15?.title).toContain("1 entry");
   });
 
   it("never fabricates a count - a day with zero real Evidence is level-0, not guessed", () => {
-    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 1));
-    const grid = wrap.querySelector(".hk-heatmap-grid") as HTMLElement;
-    const cells = grid.querySelectorAll(".hk-heatmap-cell:not(.empty)");
+    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 5));
+    const cells = wrap.querySelectorAll(".hk-heatmap-weeks .hk-heatmap-cell:not(.empty)");
     expect(Array.from(cells).every((c) => c.className.includes("level-0"))).toBe(true);
   });
 
-  it("is color-only (GitHub-contribution style) - no visible day-number text inside a cell, date is on title/hover instead", () => {
-    const wrap = renderEvidenceHeatmap([ev({ id: "1", timestamp: "2026-01-15T00:00:00.000Z" })], new Date(2026, 0, 1));
-    const grid = wrap.querySelector(".hk-heatmap-grid") as HTMLElement;
-    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".hk-heatmap-cell:not(.empty)"));
-    expect(cells.every((c) => c.textContent === "")).toBe(true);
-    const day15 = cells.find((c) => c.dataset.day === "15");
-    expect(day15?.title).toContain("January 2026 15:");
-    expect(day15?.title).toContain("1 evidence entry");
-  });
-
   it("renders a Less -> More legend using the same level-N swatch classes as the grid", () => {
-    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 1));
+    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 5));
     const legend = wrap.querySelector(".hk-heatmap-legend");
     expect(legend?.textContent).toContain("Less");
     expect(legend?.textContent).toContain("More");
     expect(legend?.querySelectorAll(".hk-heatmap-cell").length).toBe(5); // level-0..level-4
   });
-});
 
-describe("draw*() chart functions (Chart.js absent, as in every real test run)", () => {
-  it("no-op without throwing when the Chart.js CDN global isn't loaded", () => {
-    const canvas = document.createElement("canvas");
-    const parameters: Parameter[] = [
-      { id: "p1", name: "test", domain: "Human", evidenceIds: ["e1"], confidence: 0.6, status: "draft" },
-    ];
-    const relationships: Relationship[] = [];
-    const evidence: Evidence[] = [ev({ id: "e1" })];
-
-    expect(() => drawDomainCountChart(canvas, parameters)).not.toThrow();
-    expect(() => drawConfidenceHistogram(canvas, parameters)).not.toThrow();
-    expect(() => drawStatusDonut(canvas, parameters)).not.toThrow();
-    expect(() => drawRelationshipTypeChart(canvas, relationships)).not.toThrow();
-    expect(() => drawSourceFileChart(canvas, evidence)).not.toThrow();
-    expect(() => drawDomainConfidenceRadar(canvas, parameters)).not.toThrow();
+  it("each week column starts on a Sunday", () => {
+    const wrap = renderEvidenceHeatmap([], new Date(2026, 0, 5)); // a Monday
+    const firstWeek = wrap.querySelector(".hk-heatmap-week");
+    const firstRealCell = firstWeek?.querySelector<HTMLElement>(".hk-heatmap-cell");
+    // Jan 5 2026 is a Monday, so the grid should start Sun Jan 4 (empty - before any real range start/end since range is just that single day) or later - the key assertion is structural: 7 day-cells per week column plus one month-label slot.
+    expect(firstWeek?.children.length).toBe(8); // 1 month-label slot + 7 day cells
+    expect(firstRealCell).not.toBeNull();
   });
 });

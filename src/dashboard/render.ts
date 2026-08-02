@@ -1,48 +1,32 @@
-// Pure DOM rendering functions - given a root element and data, produce/update
-// markup. No fetch, no file-system access, no globals beyond the DOM APIs
-// themselves - this is what makes these unit-testable with jsdom (render.test.ts).
+// Pure-ish DOM rendering functions - given elements and data, produce/update
+// markup. No fetch, no globals beyond the DOM APIs - this is what makes most
+// of this unit-testable with jsdom (render.test.ts).
 //
-// Boundary rule (Tension C / README): this module renders whatever it's given.
-// It never calls vault-reader, evidence-parser, compiler, or store directly -
-// app.ts owns that wiring and passes this module plain data.
+// Boundary rule (Tension C / README): this module renders whatever it's
+// given. It never calls vault-reader, evidence-parser, compiler, or store
+// directly - app.ts owns that wiring and passes this module plain data.
 //
-// No frontend framework has been chosen (that would be an unmade architectural
-// decision - see docs/sprint-0-walkthrough-simulated.md). Built with vanilla DOM
-// APIs for the MVD specifically to avoid quietly pre-committing to React/Vue/
-// Svelte without that ever being an actual decision anyone signed off on.
+// Architecture note (2026-08-02, fifth pass): the six Chart.js cards and the
+// domain-grouped Parameter card grid are GONE - scrapped per direct
+// instruction. The heatmap is the one visualization that survives, and it
+// now lives inside a persistent widget canvas (index.html's .hk-canvas)
+// alongside four new cards (prayer times, time window, best-time-for,
+// notepad) that do NOT depend on vault data and are wired once by main.ts,
+// never rebuilt on a vault switch. renderDashboard below only ever touches
+// the vault-REACTIVE parts (source banner, warnings, empty-state, and the
+// heatmap's content specifically) - if it destroyed the whole canvas on
+// every vault switch/rescan, the prayer/notepad/time-window widgets' live
+// wiring (timers, event listeners) would be silently orphaned the moment a
+// visitor switched views. Evidence detail now opens keyed by DATE (a
+// heatmap cell click) rather than by Parameter, since there's no more
+// Parameter card to click - see renderDrawer.
 
-import type { HumanKernelIndex, Parameter } from "../types.js";
+import type { Evidence, HumanKernelIndex } from "../types.js";
 import type { ParseWarning } from "../evidence-parser/index.js";
-import {
-  drawDomainCountChart,
-  drawConfidenceHistogram,
-  drawStatusDonut,
-  drawRelationshipTypeChart,
-  drawSourceFileChart,
-  drawDomainConfidenceRadar,
-  renderEvidenceHeatmap,
-  monthWithMostEvidence,
-} from "./charts.js";
+import { renderEvidenceHeatmap } from "./charts.js";
+import { makeDraggable } from "./draggable.js";
 
-/** Which data the dashboard is currently showing - the bundled public
- * reference profile, or a real vault the visitor picked themselves. Also UI
- * state, not canonical data. */
 export type ViewSource = "sample" | "own-vault";
-
-/** Wires both click and keyboard (Enter/Space) activation onto an element in
- * one place - Material's state-layer model (hover/focus/press) assumes
- * every interactive surface is actually keyboard-operable, which a bare
- * `div` + click listener is not. Used for the Parameter cards and the
- * close ("x") controls, none of which are real `<button>` elements. */
-function onActivate(el: HTMLElement, handler: () => void): void {
-  el.addEventListener("click", handler);
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      handler();
-    }
-  });
-}
 
 export function renderUnsupportedBrowser(root: HTMLElement): void {
   root.innerHTML = "";
@@ -50,9 +34,8 @@ export function renderUnsupportedBrowser(root: HTMLElement): void {
   box.className = "hk-empty";
   box.innerHTML = `
     <div class="hk-empty-icon">⚠</div>
-    <div><b>Browser not supported</b></div>
-    <div class="hk-muted">Human Kernel needs Chrome, Edge, or Brave (ADR-0003) - the File System
-    Access API isn't available here. Open this page in one of those browsers to continue.</div>
+    <div><b>This browser can't open a folder directly</b></div>
+    <div class="hk-muted">Try Chrome, Edge, or Brave instead - the reference profile below still works here either way.</div>
   `;
   root.appendChild(box);
 }
@@ -63,21 +46,17 @@ export function renderEmptyState(root: HTMLElement, onPickVault: () => void): vo
   box.className = "hk-empty";
   box.innerHTML = `
     <div class="hk-empty-icon">◌</div>
-    <div><b>No vault connected</b></div>
-    <div class="hk-muted">Human Kernel reads a local folder of .md files directly in your
-    browser. Nothing is uploaded anywhere.</div>
+    <div><b>No notes connected yet</b></div>
+    <div class="hk-muted">Point this at a folder of your own notes and it builds your profile from them, right in your browser. Nothing is uploaded anywhere.</div>
   `;
   const btn = document.createElement("button");
   btn.className = "hk-primary";
-  btn.textContent = "Open Vault Folder";
+  btn.textContent = "Choose a folder";
   btn.addEventListener("click", onPickVault);
   box.appendChild(btn);
   root.appendChild(box);
 }
 
-/** Dismissible toast, bottom-right - for anything that needs to say
- * something (e.g. "this browser can't open a vault folder") without taking
- * over the page, in the same position/shape as the evidence drawer. */
 export function renderNotice(root: HTMLElement, message: string): void {
   let toast = root.querySelector<HTMLElement>(".hk-lock-toast");
   if (!toast) {
@@ -100,55 +79,39 @@ export function renderNotice(root: HTMLElement, message: string): void {
   toast.classList.add("active");
 }
 
+function onActivate(el: HTMLElement, handler: () => void): void {
+  el.addEventListener("click", handler);
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handler();
+    }
+  });
+}
+
 function renderWarningsPanel(warnings: ParseWarning[]): HTMLElement {
   const panel = document.createElement("div");
   panel.className = "hk-card";
   const label = document.createElement("div");
   label.className = "hk-label";
-  label.textContent = `PARSE WARNINGS (${warnings.length})`;
+  label.textContent = `Some notes couldn't be read (${warnings.length})`;
   panel.appendChild(label);
   for (const w of warnings) {
     const row = document.createElement("div");
     row.className = "hk-warn-row";
-    row.innerHTML = `<span class="hk-tag">WARNING</span><span>${w.sourceFile} (${w.sourceRef}): ${w.message}</span>`;
+    row.innerHTML = `<span class="hk-tag">Skipped</span><span>${w.sourceFile} (${w.sourceRef}): ${w.message}</span>`;
     panel.appendChild(row);
   }
   return panel;
 }
 
-function renderParameterCard(param: Parameter, onOpen: (param: Parameter) => void): HTMLElement {
-  const card = document.createElement("div");
-  card.className = "hk-param-card" + (param.status === "disputed" ? " disputed" : "");
-  card.dataset.parameterId = param.id;
-  card.tabIndex = 0;
-  card.setAttribute("role", "button");
-  card.setAttribute("aria-label", `Inspect evidence for ${param.name}`);
-
-  const title = document.createElement("div");
-  title.className = "hk-param-title";
-  title.innerHTML = `<b>${param.name}</b><span class="hk-status-pill ${param.status}">${param.status}</span>`;
-  card.appendChild(title);
-
-  const conf = document.createElement("div");
-  conf.className = "hk-conf";
-  conf.textContent = `Confidence ${param.confidence.toFixed(2)} — ${param.evidenceIds.length} linked evidence. Click to inspect.`;
-  card.appendChild(conf);
-
-  onActivate(card, () => onOpen(param));
-  return card;
-}
-
 export interface DashboardCallbacks {
-  onOpenParameter: (param: Parameter) => void;
+  onOpenDate: (dateKey: string, evidenceThatDay: Evidence[]) => void;
   onRescan: () => void;
   onConnectOwnVault: () => void;
   onViewSample: () => void;
 }
 
-/** Says whose data is on screen and offers the one alternative action - this
- * is the "move the upload control somewhere else" fix: connecting a vault is
- * no longer the primary thing the page asks you to do, it's a small,
- * always-available secondary action next to whichever profile you're on. */
 function renderSourceBanner(viewing: ViewSource, callbacks: DashboardCallbacks): HTMLElement {
   const banner = document.createElement("div");
   banner.className = "hk-source-banner";
@@ -158,12 +121,12 @@ function renderSourceBanner(viewing: ViewSource, callbacks: DashboardCallbacks):
   link.className = "hk-link-btn";
 
   if (viewing === "sample") {
-    text.textContent = "Reference profile — Adam Rosman's Human Kernel, the open example for this course.";
-    link.textContent = "Connect your own vault";
+    text.textContent = "You're looking at a real example profile - Adam's own.";
+    link.textContent = "Use my own notes instead";
     link.addEventListener("click", callbacks.onConnectOwnVault);
   } else {
-    text.textContent = "Your own vault is connected.";
-    link.textContent = "View the reference profile instead";
+    text.textContent = "Showing your own notes.";
+    link.textContent = "Back to the example profile";
     link.addEventListener("click", callbacks.onViewSample);
   }
 
@@ -172,96 +135,53 @@ function renderSourceBanner(viewing: ViewSource, callbacks: DashboardCallbacks):
   return banner;
 }
 
-function renderChartCard(titleText: string, canvasId: string): { card: HTMLElement; canvas: HTMLCanvasElement } {
-  const card = document.createElement("div");
-  card.className = "hk-card hk-chart-card";
-  const label = document.createElement("div");
-  label.className = "hk-label";
-  label.textContent = titleText;
-  card.appendChild(label);
-  const canvasWrap = document.createElement("div");
-  canvasWrap.className = "hk-chart-canvas-wrap";
-  const canvas = document.createElement("canvas");
-  canvas.id = canvasId;
-  canvasWrap.appendChild(canvas);
-  card.appendChild(canvasWrap);
-  return { card, canvas };
-}
-
-/** The overview section: one calendar heatmap + six chart cards, all
- * derived from real Evidence/Parameter/Relationship fields (see charts.ts's
- * own header comment for why no chart here invents a data axis). Sits above
- * the domain-grouped detail grid - overview first, drill-down after. */
-function renderOverview(index: HumanKernelIndex): HTMLElement {
-  const section = document.createElement("div");
-  section.className = "hk-overview";
-
-  const heading = document.createElement("div");
-  heading.className = "hk-label hk-overview-heading";
-  heading.textContent = "PROFILE OVERVIEW";
-  section.appendChild(heading);
-
-  const heatmapCard = document.createElement("div");
-  heatmapCard.className = "hk-card hk-heatmap-card";
-  heatmapCard.appendChild(renderEvidenceHeatmap(index.evidence, monthWithMostEvidence(index.evidence)));
-  section.appendChild(heatmapCard);
-
-  const chartGrid = document.createElement("div");
-  chartGrid.className = "hk-chart-grid";
-
-  const domainCount = renderChartCard("PARAMETERS BY DOMAIN", "hk-chart-domain-count");
-  const confHist = renderChartCard("CONFIDENCE DISTRIBUTION", "hk-chart-confidence-hist");
-  const statusDonut = renderChartCard("STATUS BREAKDOWN", "hk-chart-status-donut");
-  const relTypes = renderChartCard("RELATIONSHIP TYPES", "hk-chart-relationship-types");
-  const sourceFiles = renderChartCard("EVIDENCE BY SOURCE FILE", "hk-chart-source-files");
-  const radar = renderChartCard("MEAN CONFIDENCE BY DOMAIN", "hk-chart-domain-radar");
-
-  for (const { card } of [domainCount, confHist, statusDonut, relTypes, sourceFiles, radar]) {
-    chartGrid.appendChild(card);
+/** Wires click-to-open on every day that actually has evidence - a day with
+ * nothing recorded has nothing to show, so it stays inert (title/hover
+ * tooltip only, same as before). */
+function wireHeatmapClicks(heatmapEl: HTMLElement, index: HumanKernelIndex, callbacks: DashboardCallbacks): void {
+  const cells = heatmapEl.querySelectorAll<HTMLElement>(".hk-heatmap-cell:not(.empty)");
+  for (const cell of cells) {
+    const dateKey = cell.dataset.date;
+    if (!dateKey || cell.classList.contains("level-0")) continue;
+    cell.style.cursor = "pointer";
+    onActivate(cell, () => {
+      const matches = index.evidence.filter((e) => e.timestamp.slice(0, 10) === dateKey);
+      callbacks.onOpenDate(dateKey, matches);
+    });
   }
-  section.appendChild(chartGrid);
-
-  // Charts need their canvases attached to the document before Chart.js can
-  // size them correctly - draw after appending, not before.
-  drawDomainCountChart(domainCount.canvas, index.parameters);
-  drawConfidenceHistogram(confHist.canvas, index.parameters);
-  drawStatusDonut(statusDonut.canvas, index.parameters);
-  drawRelationshipTypeChart(relTypes.canvas, index.relationships);
-  drawSourceFileChart(sourceFiles.canvas, index.evidence);
-  drawDomainConfidenceRadar(radar.canvas, index.parameters);
-
-  return section;
 }
 
-/** Renders the populated dashboard: profile overview (heatmap + charts),
- * domain-grouped Parameter cards, warnings, if any. Scrolling is always on -
- * there is no ambient/no-scroll mode (removed 2026-08-02; see CHANGELOG).
- * `viewing` says whether this is the bundled reference profile or a real
- * connected vault. */
+/** Renders the vault-reactive part only: source banner, optional rescan
+ * toolbar, warnings, empty-state message, and the heatmap's content
+ * (heatmapBody is the stable #hk-heatmap-body element inside the persistent
+ * widget canvas - see index.html - its surrounding widget chrome is never
+ * touched here). The other four widgets (prayer, time window, best-time-for,
+ * notepad) are wired once by main.ts and are not part of this function at
+ * all. */
 export function renderDashboard(
-  root: HTMLElement,
+  appRoot: HTMLElement,
+  heatmapBody: HTMLElement,
   index: HumanKernelIndex,
   warnings: ParseWarning[],
   viewing: ViewSource,
   callbacks: DashboardCallbacks
 ): void {
-  root.innerHTML = "";
-
-  root.appendChild(renderSourceBanner(viewing, callbacks));
+  appRoot.innerHTML = "";
+  appRoot.appendChild(renderSourceBanner(viewing, callbacks));
 
   if (viewing === "own-vault") {
     const toolbar = document.createElement("div");
     toolbar.className = "hk-toolbar";
     const rescanBtn = document.createElement("button");
     rescanBtn.className = "hk-primary";
-    rescanBtn.textContent = "Re-scan Vault";
+    rescanBtn.textContent = "Refresh from my notes";
     rescanBtn.addEventListener("click", callbacks.onRescan);
     toolbar.appendChild(rescanBtn);
-    root.appendChild(toolbar);
+    appRoot.appendChild(toolbar);
   }
 
   if (warnings.length > 0) {
-    root.appendChild(renderWarningsPanel(warnings));
+    appRoot.appendChild(renderWarningsPanel(warnings));
   }
 
   if (index.parameters.length === 0) {
@@ -269,71 +189,59 @@ export function renderDashboard(
     none.className = "hk-muted";
     none.textContent =
       viewing === "sample"
-        ? "Reference profile is still being prepared - check back soon, or connect your own vault above."
-        : "Vault parsed, but no [!evidence] blocks were found (Spec v0.1 §4).";
-    root.appendChild(none);
-    return;
+        ? "The example profile is still being put together - check back soon."
+        : "Nothing usable was found in those notes yet.";
+    appRoot.appendChild(none);
   }
 
-  root.appendChild(renderOverview(index));
-
-  const byDomain = new Map<string, Parameter[]>();
-  for (const param of index.parameters) {
-    const list = byDomain.get(param.domain) ?? [];
-    list.push(param);
-    byDomain.set(param.domain, list);
-  }
-
-  const detailHeading = document.createElement("div");
-  detailHeading.className = "hk-label hk-overview-heading";
-  detailHeading.textContent = "PARAMETERS BY DOMAIN";
-  root.appendChild(detailHeading);
-
-  const grid = document.createElement("div");
-  grid.className = "hk-grid";
-  for (const [domain, params] of byDomain) {
-    const card = document.createElement("div");
-    card.className = "hk-card";
-    const label = document.createElement("div");
-    label.className = "hk-label";
-    label.textContent = `DOMAIN: ${domain.toUpperCase()}`;
-    card.appendChild(label);
-    for (const param of params) {
-      card.appendChild(renderParameterCard(param, callbacks.onOpenParameter));
-    }
-    grid.appendChild(card);
-  }
-  root.appendChild(grid);
+  heatmapBody.innerHTML = "";
+  const heatmap = renderEvidenceHeatmap(index.evidence);
+  wireHeatmapClicks(heatmap, index, callbacks);
+  heatmapBody.appendChild(heatmap);
 }
 
-/** Evidence drawer - Brief v2 §10 principle 2 ("every claim needs a witness") made visible. */
-export function renderDrawer(
-  root: HTMLElement,
-  param: Parameter,
-  index: HumanKernelIndex,
-  onClose: () => void
-): void {
-  let drawer = root.querySelector<HTMLElement>(".hk-drawer");
-  if (!drawer) {
-    drawer = document.createElement("div");
-    drawer.className = "hk-drawer";
-    root.appendChild(drawer);
+/** Evidence detail popup - resizable (native `resize:both`, styles.css),
+ * movable (drag via .hk-drawer-handle, wired exactly once - see below),
+ * closable (X, click or Enter/Space). Opens on a heatmap day click now,
+ * showing every real Evidence entry captured that day - "Evidence for a
+ * Parameter" doesn't apply anymore since there's no more Parameter card to
+ * click into this from.
+ *
+ * The handle element is created once and kept alive across every call - an
+ * earlier version cleared the whole drawer (innerHTML = "") on each render,
+ * which destroyed the handle makeDraggable had already wired listeners to
+ * and replaced it with a fresh, unwired one, silently breaking drag after
+ * the first day you opened. Only the content BELOW the handle gets rebuilt
+ * on each call now. */
+export function renderDrawer(drawer: HTMLElement, title: string, evidence: Evidence[], onClose: () => void): void {
+  let handle = drawer.querySelector<HTMLElement>(".hk-drawer-handle");
+  if (!handle) {
+    handle = document.createElement("div");
+    handle.className = "hk-drawer-handle";
+    handle.innerHTML = `<span class="hk-widget-grip">⠿⠿ drag</span>`;
+    drawer.appendChild(handle);
+    makeDraggable(drawer, handle, document.body, "evidence-drawer");
+  }
+  for (const child of Array.from(drawer.children)) {
+    if (child !== handle) child.remove();
   }
 
-  const evidence = param.evidenceIds
-    .map((id) => index.evidence.find((e) => e.id === id))
-    .filter((e): e is NonNullable<typeof e> => e !== undefined);
-
-  drawer.innerHTML = "";
   const label = document.createElement("div");
   label.className = "hk-label";
-  label.textContent = `EVIDENCE — "${param.name}"`;
+  label.textContent = title;
   drawer.appendChild(label);
+
+  if (evidence.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "hk-muted";
+    empty.textContent = "Nothing recorded for this day.";
+    drawer.appendChild(empty);
+  }
 
   for (const ev of evidence) {
     const row = document.createElement("div");
     row.className = "hk-evidence-row";
-    row.innerHTML = `<span class="hk-src">${ev.sourceFile}${ev.sourceRef ? "#" + ev.sourceRef : ""}</span><span>${ev.observation}</span><span class="hk-meta">conf ${ev.confidence.toFixed(2)} · ${ev.timestamp.slice(0, 10)}</span>`;
+    row.innerHTML = `<span class="hk-src">${ev.sourceFile}</span><span>${ev.observation}</span><span class="hk-meta">${ev.timestamp.slice(0, 10)}</span>`;
     drawer.appendChild(row);
   }
 
@@ -342,14 +250,13 @@ export function renderDrawer(
   closeBtn.textContent = "×";
   closeBtn.tabIndex = 0;
   closeBtn.setAttribute("role", "button");
-  closeBtn.setAttribute("aria-label", "Close evidence drawer");
+  closeBtn.setAttribute("aria-label", "Close");
   onActivate(closeBtn, onClose);
   drawer.appendChild(closeBtn);
 
   drawer.classList.add("active");
 }
 
-export function closeDrawer(root: HTMLElement): void {
-  const drawer = root.querySelector<HTMLElement>(".hk-drawer");
-  drawer?.classList.remove("active");
+export function closeDrawer(drawer: HTMLElement): void {
+  drawer.classList.remove("active");
 }

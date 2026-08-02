@@ -1,109 +1,173 @@
-/* Forage DeepMind brand system (forage-colorway skill, FDMAI-BRAND-001 v1.1) -
-   Forage Deep Minds tier pairing: Dark x Ember Gold. Replaces the earlier
-   ad-hoc green-terminal palette (real gap, caught 2026-08-02 against a
-   sibling dashboard-mockup session that had already fixed the same mistake).
-   Reuses the layout validated in wireframes/data-states.html and Draft 5
-   (Brief v2 SS9) - dark, mission-control aesthetic, no gamification.
+/* Forage DeepMind brand system (forage-colorway skill, FDMAI-BRAND-001 v1.1).
+   Dark x Ember Gold (Deep Minds) is default; Light x Sage (Open) is now also
+   wired as a real toggle (2026-08-02, fifth pass, direct request) - both
+   tiers are defined IN the brand guidelines, this isn't inventing a palette.
 
-   Structure/motion layer (2026-08-02, third pass): Material Design 3's
-   published tokens - the 4/8dp spacing scale, shape/corner-radius scale,
-   surface elevation, state-layer opacities, and standard easing/duration -
-   applied natively in plain CSS. Still no Material Web Components, no MUI,
-   no JS framework (that's the standing ADR - see
-   docs/sprint-0-walkthrough-simulated.md). M3 is a design LANGUAGE meant to
-   be reskinned with your own brand color ("Material You"), so this is the
-   intended way to use it: the locked Forage palette below is untouched,
-   only structure/motion is M3-derived. */
+   Structure/motion layer (third pass): Material Design 3's published tokens
+   (spacing, shape, elevation, state-layer, easing/duration) applied natively.
+   Page-margin layer (fifth pass): Atlassian Design System's spacing-primitive
+   scale (8px base unit: atlassian.design/foundations/spacing), used for the
+   outer page gutters specifically ("similar to github" - a centered,
+   max-width shell with generous side margins), layered on top of the M3
+   component-level tokens rather than replacing them - two different design
+   systems solving two different problems (page layout vs. component
+   structure), both reskinned with Forage's own colors, no conflict. */
 
 :root {
-  /* Locked Forage Deep Minds pairing - do not change on any future UI pass */
+  /* Locked Forage Deep Minds pairing (default/dark) - do not change on any
+     future UI pass without an explicit brand-guideline update. */
   --bg: #1c1c1a;              /* Deep Charcoal - primary dark surface */
   --card: #262624;            /* Near Black - elevated card/surface on dark */
   --card-alt: #2a2a28;        /* Charcoal Mist - nested surface (drawer, toast) */
-  --text: rgba(237, 233, 224, 0.88); /* body text per locked pairing */
+  --text: rgba(237, 233, 224, 0.88);
   --text-strong: #ede9e0;
-  --ember: #c8a96e;           /* Ember Gold - primary accent, headings, CTAs, rule lines */
-  --sage: #7a8c6e;            /* Muted Sage - secondary tags/status on dark */
+  --ember: #c8a96e;           /* Ember Gold - dark-surface accent ONLY (brand rule) */
+  --sage: #7a8c6e;            /* Muted Sage - light-surface accent / secondary tag on dark */
   --crimson: #c1286b;         /* Rose Crimson - warnings/critical only, never decorative */
-  --stone: #b0ada4;           /* Stone Gray - tags, footer, captions, metadata */
-  --border-hint: rgba(200, 169, 110, 0.12); /* locked pairing border hint */
+  --stone: #b0ada4;           /* Stone Gray - tags, footer, captions, metadata, both modes */
+  --parchment: #eae7dc;       /* callout/code backgrounds */
+  --border-hint: rgba(200, 169, 110, 0.12);
 
-  /* Type stack per FDMAI-BRAND-001 */
-  --font-display: "Crimson Text", Georgia, serif;      /* hero/wordmark only */
+  /* Semantic accent - the brand guideline is explicit that Ember Gold never
+     appears as text/heading on a light surface ("dark surfaces only"), and
+     Sage is the light-surface accent instead. Every rule below that colors
+     TEXT (headings, links, CTAs) uses --accent-text, never --ember directly,
+     so the theme toggle can never accidentally put gold text on a light
+     background. --ember itself stays available for non-text decorative use
+     (borders, fills) that the guideline doesn't restrict. */
+  --accent-text: var(--ember);
+
+  --font-display: "Crimson Text", Georgia, serif;
   --font-heading: "DM Sans", Arial, sans-serif;
   --font-body: "DM Sans", Helvetica, sans-serif;
-  --font-mono: "JetBrains Mono", "Courier New", monospace; /* tags, codes, reference IDs */
+  --font-mono: "JetBrains Mono", "Courier New", monospace;
 
-  /* --- Material Design 3 structure/motion tokens (Forage-tinted) --- */
+  /* M3 spacing scale (4dp baseline) - component-level spacing. */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 28px; --space-8: 32px; --space-10: 40px;
 
-  /* 4dp baseline spacing scale */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 28px;
-  --space-8: 32px;
-  --space-10: 40px;
+  /* Atlassian spacing-primitive scale (8px base) - PAGE-level margins only
+     (.hk-shell below). Kept as separate tokens from the M3 scale above on
+     purpose: same numeric family, different job (layout gutters vs.
+     component padding), matching how the source actually separates them. */
+  --gutter-sm: 24px;  /* space.300 */
+  --gutter-lg: 40px;  /* space.500 */
+  --gutter-xl: 64px;  /* space.800 */
 
-  /* M3 shape scale (corner radius) */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 28px;
-  --radius-full: 999px;
+  --radius-xs: 4px; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+  --radius-xl: 28px; --radius-full: 999px;
 
-  /* Surface elevation, dark-theme tuned. M3 favors tonal overlays over heavy
-     shadow on dark surfaces; these pair a soft shadow with the tonal step
-     that already exists between --bg / --card / --card-alt rather than
-     fighting it with a light-theme drop-shadow recipe. */
   --elevation-0: none;
   --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.22);
   --elevation-2: 0 2px 4px rgba(0, 0, 0, 0.32), 0 4px 10px rgba(0, 0, 0, 0.26);
   --elevation-3: 0 4px 8px rgba(0, 0, 0, 0.34), 0 8px 20px rgba(0, 0, 0, 0.28);
   --elevation-4: 0 6px 14px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.34);
 
-  /* State-layer tints - M3's canonical opacities are ~8% hover / ~12% focus
-     / ~12-16% press, laid over the Ember accent. The 8% hover figure already
-     existed ad hoc on .hk-primary:hover; formalized here and now applied
-     consistently everywhere instead of one-off. */
   --state-hover: rgba(200, 169, 110, 0.08);
   --state-focus: rgba(200, 169, 110, 0.12);
   --state-press: rgba(200, 169, 110, 0.16);
 
-  /* M3 standard easing, plus short/medium durations for micro-interactions
-     and entrances respectively. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
   --duration-short: 150ms;
   --duration-medium: 300ms;
 }
+
+/* Forage Open - Light x Sage. Same named tokens, brand-guideline light
+   values - toggled via [data-theme="light"] on <html> (theme.ts), persisted
+   in localStorage, default is dark (guideline: "Dark mode is the default
+   presentation mode. Light mode is secondary."). */
+:root[data-theme="light"] {
+  --bg: #f5f3ee;              /* Warm Off-White */
+  --card: #ffffff;            /* Pure White */
+  --card-alt: var(--parchment);
+  --text: rgba(28, 28, 26, 0.82);
+  --text-strong: #1c1c1a;
+  --accent-text: var(--sage); /* Ember is dark-surface-only per brand rule */
+  --border-hint: rgba(122, 140, 110, 0.22);
+  --state-hover: rgba(122, 140, 110, 0.08);
+  --state-focus: rgba(122, 140, 110, 0.14);
+  --state-press: rgba(122, 140, 110, 0.18);
+}
+
 * { box-sizing: border-box; }
+html { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }
 body {
   margin: 0; min-height: 100vh;
   background: var(--bg);
   color: var(--text); font-family: var(--font-body);
+  transition: background-color var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
 }
-.hk-topbar { padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--border-hint); }
-.hk-topbar h1 {
-  margin: 0; font-size: 40px; font-weight: 400; font-family: var(--font-display); color: var(--ember);
+
+/* GitHub-style centered shell with generous side gutters - Atlassian's
+   space.300/500/800 tokens (24/40/64px), widening at larger viewports rather
+   than a single fixed value everywhere. */
+.hk-shell { max-width: 1280px; margin: 0 auto; padding: 0 var(--gutter-sm); }
+@media (min-width: 900px) { .hk-shell { padding: 0 var(--gutter-lg); } }
+@media (min-width: 1440px) { .hk-shell { padding: 0 var(--gutter-xl); } }
+
+/* ---------- Top ribbon + profile header (GitHub-profile-style) ---------- */
+.hk-ribbon {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-4) 0; border-bottom: 1px solid var(--border-hint);
+  font-family: var(--font-mono); font-size: 12px; color: var(--stone);
 }
-.hk-sub { color: var(--stone); font-size: 12px; font-family: var(--font-mono); }
-.hk-page { padding: var(--space-5) var(--space-6) var(--space-10); position: relative; min-height: 60vh; }
+.hk-ribbon-brand { color: var(--accent-text); font-weight: 500; letter-spacing: 0.04em; }
+
+.hk-profile-header {
+  display: flex; gap: var(--space-6); align-items: flex-start;
+  padding: var(--space-7) 0 var(--space-6);
+}
+.hk-avatar-wrap {
+  position: relative; width: 88px; height: 88px; flex-shrink: 0;
+  border-radius: var(--radius-lg); overflow: hidden; cursor: pointer;
+  border: 1px solid var(--border-hint); box-shadow: var(--elevation-2);
+}
+.hk-avatar-wrap svg { display: block; width: 100%; height: 100%; }
+.hk-avatar-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.55); color: #fff; text-align: center; font-size: 10.5px;
+  font-family: var(--font-heading); font-weight: 600; letter-spacing: 0.03em; line-height: 1.4;
+  opacity: 0; transition: opacity var(--duration-short) var(--ease-standard);
+  padding: 6px;
+}
+.hk-avatar-wrap:hover .hk-avatar-overlay,
+.hk-avatar-wrap:focus-visible .hk-avatar-overlay { opacity: 1; }
+.hk-avatar-wrap:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
+
+.hk-profile-body { min-width: 0; }
+.hk-profile-name {
+  margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; color: var(--accent-text);
+}
+.hk-profile-bio { color: var(--text); font-size: 13.5px; max-width: 520px; margin-top: 4px; line-height: 1.6; }
+.hk-profile-stats { display: flex; gap: var(--space-5); margin-top: var(--space-3); flex-wrap: wrap; }
+.hk-profile-stat { font-size: 12px; color: var(--stone); font-family: var(--font-mono); }
+.hk-profile-stat b { color: var(--text-strong); font-family: var(--font-heading); font-weight: 600; }
+
+.hk-theme-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card); border: 1px solid var(--border-hint); color: var(--text);
+  padding: 7px 12px; border-radius: var(--radius-full); cursor: pointer;
+  font-size: 11.5px; font-family: var(--font-heading);
+  transition: border-color var(--duration-short) var(--ease-standard), background-color var(--duration-short) var(--ease-standard);
+}
+.hk-theme-toggle:hover { border-color: var(--accent-text); }
+.hk-theme-toggle:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
+
+.hk-page { padding: var(--space-2) 0 var(--space-5); position: relative; }
 
 .hk-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 340px; gap: 14px; text-align: center;
 }
-.hk-empty-icon { font-size: 40px; opacity: 0.5; color: var(--ember); }
+.hk-empty-icon { font-size: 40px; opacity: 0.5; color: var(--accent-text); }
 .hk-empty b { font-family: var(--font-heading); font-weight: 600; color: var(--text-strong); }
 .hk-muted { color: var(--stone); font-size: 12.5px; max-width: 420px; font-family: var(--font-body); }
 
 .hk-primary {
   position: relative; overflow: hidden;
-  background: transparent; border: 1px solid var(--ember); color: var(--ember);
+  background: transparent; border: 1px solid var(--accent-text); color: var(--accent-text);
   padding: 10px var(--space-4); border-radius: var(--radius-sm); cursor: pointer;
   font-size: 13px; font-family: var(--font-heading);
   transition: background-color var(--duration-short) var(--ease-standard),
@@ -112,13 +176,7 @@ body {
 }
 .hk-primary:hover { background: var(--state-hover); }
 .hk-primary:active { transform: scale(0.98); background: var(--state-press); }
-.hk-primary:focus-visible {
-  outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--ember);
-}
-/* Center-expanding press "ripple" - a pure-CSS approximation of M3's ripple
-   (no JS click-position tracking, so it expands from the button's center
-   rather than the pointer). Honest, low-cost nod to the real thing given
-   the no-framework/no-extra-JS constraint. */
+.hk-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
 .hk-primary::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   background: radial-gradient(circle, var(--state-press) 0%, transparent 70%);
@@ -128,89 +186,30 @@ body {
 .hk-primary:active::after { opacity: 1; transform: scale(1.3); transition-duration: 60ms; }
 .hk-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 
-/* Source banner: says whose data is on screen, offers the one alternative
-   action. This is the "move the upload control somewhere else" fix - it's
-   never the primary thing the page asks you to do. */
 .hk-source-banner {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
   padding: 10px var(--space-4); margin-bottom: 14px; border-radius: var(--radius-md);
-  background: rgba(200, 169, 110, 0.06); border: 1px solid var(--border-hint);
+  background: var(--state-hover); border: 1px solid var(--border-hint);
   font-size: 12px; color: var(--stone); font-family: var(--font-body);
 }
 .hk-link-btn {
   position: relative;
-  background: none; border: none; color: var(--ember); cursor: pointer; font-size: 12px;
+  background: none; border: none; color: var(--accent-text); cursor: pointer; font-size: 12px;
   font-family: var(--font-heading); text-decoration: underline; white-space: nowrap; padding: 0;
   transition: color var(--duration-short) var(--ease-standard);
 }
 .hk-link-btn:hover { color: var(--text-strong); }
-.hk-link-btn:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; border-radius: var(--radius-xs); }
+.hk-link-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; border-radius: var(--radius-xs); }
 
 .hk-card {
   background: var(--card); border: 1px solid var(--border-hint);
-  border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4);
+  border-radius: var(--radius-lg); padding: var(--space-4);
   box-shadow: var(--elevation-1);
 }
-.hk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); }
 .hk-label {
   font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stone);
   margin-bottom: 12px; font-family: var(--font-mono);
 }
-
-/* Profile overview: heatmap card + 6-up chart grid (2026-08-02 rebuild).
-   Sits above the domain-grouped detail grid - overview before drill-down. */
-.hk-overview { margin-bottom: 28px; }
-.hk-overview-heading { margin-top: 6px; }
-
-/* Shrunk to GitHub-contribution scale (2026-08-02, direct feedback: "too
-   big... don't like square if big like that... right side is kinda empty").
-   Cells no longer hold a visible day-number (see charts.ts - it's on
-   title/hover now, same as GitHub), so they can be genuinely small instead
-   of being sized to fit a digit. The card itself shrinks to fit that small
-   content (`width: fit-content`) instead of stretching the full grid-column
-   width and leaving a visible gap - the emptiness was a card-sizing problem
-   as much as a cell-sizing one. */
-.hk-heatmap-card { overflow-x: auto; width: fit-content; max-width: 100%; }
-.hk-heatmap-caption { margin-bottom: 14px; max-width: 260px; }
-.hk-heatmap-grid {
-  display: grid; grid-template-columns: repeat(7, 13px); gap: 3px;
-  width: max-content;
-}
-.hk-heatmap-dow {
-  text-align: center; font-size: 10px; color: var(--stone); font-family: var(--font-mono);
-  padding-bottom: 4px; letter-spacing: 0.05em;
-}
-.hk-heatmap-cell {
-  width: 13px; height: 13px;
-  border-radius: var(--radius-xs);
-  background: var(--card-alt); border: 1px solid var(--border-hint);
-  transition: transform var(--duration-short) var(--ease-standard);
-}
-.hk-heatmap-cell.empty { background: transparent; border-color: transparent; }
-.hk-heatmap-cell.level-0 { background: var(--card-alt); }
-.hk-heatmap-cell.level-1 { background: rgba(200, 169, 110, 0.2); border-color: rgba(200, 169, 110, 0.2); }
-.hk-heatmap-cell.level-2 { background: rgba(200, 169, 110, 0.42); border-color: rgba(200, 169, 110, 0.42); }
-.hk-heatmap-cell.level-3 { background: rgba(200, 169, 110, 0.68); border-color: rgba(200, 169, 110, 0.68); }
-.hk-heatmap-cell.level-4 { background: var(--ember); border-color: var(--ember); }
-.hk-heatmap-cell:not(.empty):hover { transform: scale(1.3); }
-
-/* Less -> More legend, GitHub's own convention - reuses the identical
-   level-N swatch classes so it can never visually drift out of sync with
-   the grid's own color scale. */
-.hk-heatmap-legend {
-  display: flex; align-items: center; gap: 4px; margin-top: 12px;
-  font-size: 10px; color: var(--stone); font-family: var(--font-mono);
-}
-
-/* Two-per-row (2026-08-02, direct feedback: "make two cards to fill one row
-   so we have visual hierarchy" - was auto-fit at up to 5-6 across, which
-   made every chart the same small visual weight with no hierarchy). */
-.hk-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
-@media (max-width: 640px) {
-  .hk-chart-grid { grid-template-columns: 1fr; }
-}
-.hk-chart-card { margin-bottom: 0; }
-.hk-chart-canvas-wrap { position: relative; height: 260px; }
 
 .hk-warn-row {
   display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--crimson);
@@ -222,41 +221,137 @@ body {
   text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.08em;
 }
 
-/* Parameter cards are the one real interactive "surface" in the grid (click
-   or Enter/Space opens the evidence drawer - see render.ts's onActivate) -
-   the only place a hover-lift + press + focus-ring set earns its keep;
-   everything else in .hk-card is static and only gets resting elevation. */
-.hk-param-card {
-  border: 1px solid var(--border-hint); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
-  margin-bottom: 10px; cursor: pointer;
-  background: var(--card-alt); box-shadow: var(--elevation-1);
-  transition: transform var(--duration-short) var(--ease-standard),
-              box-shadow var(--duration-short) var(--ease-standard),
-              border-color var(--duration-short) var(--ease-standard);
+/* ---------- Widget canvas: resizable, movable cards ---------- */
+/* Free-form canvas (2026-08-02, direct request: "resizeable movable card...
+   moving, it's not static"). Each .hk-widget is absolutely positioned inside
+   this relatively-positioned canvas; native `resize:both` handles resizing
+   (zero JS, Chromium-native - fits ADR-0003's existing Chromium-only scope),
+   a small pointer-driven drag on the header handles moving. Position/size
+   persists per-widget in localStorage (src/dashboard/draggable.ts) so a
+   visitor's arrangement survives a reload; first-time visitors get the
+   built-in default layout below. */
+.hk-canvas { position: relative; min-height: 700px; margin-bottom: var(--space-6); }
+.hk-widget {
+  position: absolute; display: flex; flex-direction: column;
+  min-width: 220px; min-height: 160px;
+  resize: both; overflow: auto;
+  background: var(--card); border: 1px solid var(--border-hint);
+  border-radius: var(--radius-lg); box-shadow: var(--elevation-1);
+  animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both;
 }
-.hk-param-card:hover { transform: translateY(-2px); box-shadow: var(--elevation-2); border-color: rgba(200, 169, 110, 0.3); }
-.hk-param-card:active { transform: translateY(0); box-shadow: var(--elevation-1); }
-.hk-param-card:focus-visible {
-  outline: none; box-shadow: var(--elevation-2), 0 0 0 3px var(--state-focus), 0 0 0 1px var(--ember);
+.hk-widget-handle {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: var(--space-3) var(--space-4); cursor: grab;
+  border-bottom: 1px solid var(--border-hint); flex-shrink: 0;
+  background: var(--card-alt); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  user-select: none; touch-action: none;
 }
-.hk-param-card.disputed { border-color: var(--crimson); background: rgba(193, 40, 107, 0.06); }
-.hk-param-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.hk-param-title b { font-family: var(--font-heading); font-weight: 600; font-size: 15px; color: var(--ember); }
-.hk-status-pill {
-  font-size: 9.5px; padding: 2px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-hint);
-  font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+.hk-widget-handle:active { cursor: grabbing; }
+.hk-widget-grip { color: var(--stone); font-size: 11px; letter-spacing: 0.14em; font-family: var(--font-mono); }
+.hk-widget.dragging { box-shadow: var(--elevation-3); opacity: 0.96; }
+.hk-widget-body { padding: var(--space-4); flex: 1; min-height: 0; }
+
+/* ---------- Prayer times ---------- */
+.hk-prayer-list { display: flex; flex-direction: column; gap: 2px; }
+.hk-prayer-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--border-hint); font-size: 12.5px;
 }
-.hk-status-pill.disputed { border-color: var(--crimson); color: var(--crimson); }
-.hk-status-pill.verified { border-color: var(--sage); color: var(--sage); }
-.hk-status-pill.draft { border-color: var(--stone); color: var(--stone); }
-.hk-conf { font-size: 11.5px; color: var(--stone); margin-top: 4px; font-family: var(--font-mono); }
+.hk-prayer-row:last-child { border-bottom: none; }
+.hk-prayer-name { font-family: var(--font-heading); color: var(--text); }
+.hk-prayer-time { font-family: var(--font-mono); color: var(--stone); font-variant-numeric: tabular-nums; }
+.hk-prayer-row.next { background: var(--state-hover); border-radius: var(--radius-sm); padding-left: 8px; padding-right: 8px; margin: 0 -8px; }
+.hk-prayer-row.next .hk-prayer-name { color: var(--accent-text); font-weight: 600; }
+.hk-prayer-row.next .hk-prayer-time { color: var(--accent-text); }
+.hk-prayer-row.voluntary .hk-prayer-name::after {
+  content: "recommended window"; margin-left: 8px; font-size: 9.5px; color: var(--stone);
+  font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 400;
+}
+.hk-prayer-note { margin-top: var(--space-3); font-size: 11px; color: var(--stone); line-height: 1.6; }
+
+/* ---------- Time window / best-time-for (placeholder content, real motion) ---------- */
+.hk-window-list { display: flex; flex-direction: column; gap: 6px; }
+.hk-window-row {
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 10px;
+  border-radius: var(--radius-sm); border: 1px solid transparent; font-size: 12px;
+  transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard);
+}
+.hk-window-row.current { background: var(--state-hover); border-color: var(--border-hint); }
+.hk-window-row.current .hk-window-name { color: var(--accent-text); }
+.hk-window-name { font-family: var(--font-heading); font-weight: 600; color: var(--text-strong); }
+.hk-window-range { font-family: var(--font-mono); font-size: 10.5px; color: var(--stone); }
+.hk-window-suggestion { font-size: 11.5px; color: var(--text); }
+.hk-placeholder-flag {
+  display: inline-block; margin-top: var(--space-3); font-size: 10px; letter-spacing: 0.05em;
+  color: var(--crimson); border: 1px dashed rgba(193, 40, 107, 0.4); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-family: var(--font-mono); line-height: 1.5;
+}
+
+/* ---------- Notepad ---------- */
+.hk-notepad-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-3); }
+.hk-highlight-swatch {
+  width: 20px; height: 20px; border-radius: var(--radius-full); cursor: pointer;
+  border: 2px solid transparent; padding: 0; transition: border-color var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
+}
+.hk-highlight-swatch:hover { transform: scale(1.15); }
+.hk-highlight-swatch.active { border-color: var(--text-strong); }
+.hk-highlight-swatch:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus); }
+.hk-notepad-clear {
+  margin-left: auto; background: none; border: none; color: var(--stone); cursor: pointer;
+  font-size: 10.5px; font-family: var(--font-mono); text-decoration: underline;
+}
+.hk-notepad-clear:hover { color: var(--crimson); }
+.hk-notepad-area {
+  flex: 1; min-height: 90px; overflow-y: auto; outline: none;
+  background: var(--card-alt); border: 1px solid var(--border-hint); border-radius: var(--radius-md);
+  padding: var(--space-3); font-size: 13px; line-height: 1.7; color: var(--text);
+  font-family: var(--font-body);
+}
+.hk-notepad-area:empty::before {
+  content: attr(data-placeholder); color: var(--stone); font-style: italic;
+}
+.hk-notepad-area mark { border-radius: 2px; padding: 0 1px; }
+
+/* ---------- Heatmap (GitHub-contribution style, spans real date range) ---------- */
+.hk-heatmap-caption { margin-bottom: var(--space-3); }
+.hk-heatmap-scroll { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+.hk-heatmap-dow-col, .hk-heatmap-week { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.hk-heatmap-month-slot {
+  height: 12px; font-size: 9.5px; color: var(--stone); font-family: var(--font-mono);
+  white-space: nowrap; margin-bottom: 2px;
+}
+.hk-heatmap-dow {
+  height: 11px; width: 24px; font-size: 9px; color: var(--stone); font-family: var(--font-mono);
+  display: flex; align-items: center;
+}
+.hk-heatmap-cell {
+  width: 11px; height: 11px; border-radius: var(--radius-xs);
+  background: var(--card-alt); border: 1px solid var(--border-hint);
+  transition: transform var(--duration-short) var(--ease-standard);
+}
+.hk-heatmap-cell.empty { background: transparent; border-color: transparent; }
+.hk-heatmap-cell.level-0 { background: var(--card-alt); }
+.hk-heatmap-cell.level-1 { background: rgba(200, 169, 110, 0.25); border-color: rgba(200, 169, 110, 0.25); }
+.hk-heatmap-cell.level-2 { background: rgba(200, 169, 110, 0.48); border-color: rgba(200, 169, 110, 0.48); }
+.hk-heatmap-cell.level-3 { background: rgba(200, 169, 110, 0.72); border-color: rgba(200, 169, 110, 0.72); }
+.hk-heatmap-cell.level-4 { background: var(--ember); border-color: var(--ember); }
+.hk-heatmap-cell:not(.empty):hover { transform: scale(1.4); }
+.hk-heatmap-legend {
+  display: flex; align-items: center; gap: 4px; margin-top: var(--space-3);
+  font-size: 10px; color: var(--stone); font-family: var(--font-mono);
+}
 
 .hk-drawer {
-  position: fixed; right: 25px; bottom: 25px; width: 380px; max-height: 60vh; overflow-y: auto;
-  background: var(--card-alt); border: 1px solid var(--ember); border-radius: var(--radius-lg); padding: var(--space-5);
+  position: fixed; right: 25px; bottom: 25px; width: 380px; height: 420px;
+  max-width: calc(100vw - 40px); max-height: calc(100vh - 50px);
+  min-width: 260px; min-height: 200px;
+  overflow: auto; resize: both;
+  background: var(--card-alt); border: 1px solid var(--accent-text); border-radius: var(--radius-lg); padding: var(--space-5);
   display: none; box-shadow: var(--elevation-4); z-index: 99;
 }
 .hk-drawer.active { display: block; animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both; }
+.hk-drawer-handle { cursor: grab; margin: calc(var(--space-5) * -1) calc(var(--space-5) * -1) var(--space-3); padding: var(--space-2) var(--space-5); }
+.hk-drawer-handle:active { cursor: grabbing; }
 .hk-close {
   position: absolute; top: 14px; right: 18px; cursor: pointer; color: var(--crimson);
   border-radius: var(--radius-xs);
@@ -269,11 +364,9 @@ body {
   border-bottom: 1px solid var(--border-hint); font-size: 12px; font-family: var(--font-body);
 }
 .hk-evidence-row:last-child { border-bottom: none; }
-.hk-src { color: var(--ember); font-family: var(--font-mono); font-size: 11.5px; }
+.hk-src { color: var(--accent-text); font-family: var(--font-mono); font-size: 11.5px; }
 .hk-meta { color: var(--stone); font-size: 11px; font-family: var(--font-mono); }
 
-/* Generic dismissible toast (renderNotice) - e.g. "this browser can't open a
-   vault folder." Same position/shape the evidence drawer uses. */
 .hk-lock-toast {
   position: fixed; right: 25px; bottom: 25px; max-width: 340px;
   background: var(--card-alt); border: 1px solid var(--crimson); border-radius: var(--radius-md);
@@ -283,67 +376,41 @@ body {
 .hk-lock-toast.active { display: block; animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both; }
 .hk-lock-toast-btn {
   position: relative; overflow: hidden;
-  display: block; margin-top: 10px; background: transparent; border: 1px solid var(--ember);
-  color: var(--ember); padding: 6px var(--space-3); border-radius: var(--radius-sm); cursor: pointer; font-size: 11.5px;
+  display: block; margin-top: 10px; background: transparent; border: 1px solid var(--accent-text);
+  color: var(--accent-text); padding: 6px var(--space-3); border-radius: var(--radius-sm); cursor: pointer; font-size: 11.5px;
   font-family: var(--font-heading);
   transition: background-color var(--duration-short) var(--ease-standard), transform var(--duration-short) var(--ease-standard);
 }
 .hk-lock-toast-btn:hover { background: var(--state-hover); }
 .hk-lock-toast-btn:active { transform: scale(0.98); }
-.hk-lock-toast-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--ember); }
+.hk-lock-toast-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
 
 .hk-footer {
-  text-align: center; padding: var(--space-5) var(--space-6) var(--space-7); color: var(--stone); font-size: 11.5px;
+  text-align: center; padding: var(--space-5) 0 var(--space-7); color: var(--stone); font-size: 11.5px;
   border-top: 1px solid var(--border-hint); margin-top: var(--space-5); font-family: var(--font-mono);
 }
-.hk-footer a { color: var(--ember); text-decoration: none; }
+.hk-footer a { color: var(--accent-text); text-decoration: none; }
 .hk-footer a:hover { text-decoration: underline; }
 
-/* Live clock (Asia/Kuala_Lumpur) - text only, the one element that visibly
-   moves on its own. tabular-nums keeps the ticking seconds from jittering
-   the layout as digit widths change. */
 .hk-clock {
   margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--stone);
   font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
 }
 
-/* Entrance motion: a quick, uniform fade + rise as content is inserted.
-   render.ts rebuilds its subtree from scratch on every call (view switch,
-   rescan, initial load), so this plays once per fresh render - reads as
-   "content refreshed," not a per-card stagger gimmick. Deliberately uses the
-   standalone `translate` property (not `transform`) so it never fights the
-   `transform`-based hover-lift/press-scale rules above: `translate` and
-   `transform` compose instead of overriding each other in the cascade. M3's
-   emphasized-decelerate curve is built for exactly this - elements arriving
-   at rest quickly, not bouncing. */
 @keyframes hk-rise-in {
   from { opacity: 0; translate: 0 8px; }
   to { opacity: 1; translate: 0 0; }
 }
-.hk-param-card, .hk-chart-card, .hk-heatmap-card {
-  animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both;
-}
 
-/* Ambient background particles (2026-08-02, direct request: "background
-   live animation that's not heavy - like moving atoms... asteroids (very
-   small) & glowing slowly but moving fast (smooth)"). Fixed full-viewport
-   layer, negative z-index so it paints above the body background but below
-   every normal-flow element on the page (.hk-topbar/.hk-page/.hk-footer all
-   have default z-index:auto and need no change to sit above it); disabled
-   entirely under reduced-motion below. Populated by src/dashboard/particles.ts. */
-.hk-particles {
-  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
-}
+/* ---------- Ambient background particles ---------- */
+.hk-particles { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .hk-particle {
   position: absolute;
   left: var(--hk-p-left); top: var(--hk-p-top);
   width: var(--hk-p-size); height: var(--hk-p-size);
   border-radius: 50%;
-  background: var(--ember);
-  box-shadow: 0 0 6px 1px rgba(200, 169, 110, 0.55);
-  /* Two independent cadences on purpose: drift covers real distance quickly
-     ("moving fast"), glow pulses brightness on its own, slower cycle
-     ("glowing slowly") - deliberately not synced to the same duration. */
+  background: var(--accent-text);
+  box-shadow: 0 0 6px 1px var(--state-press);
   animation:
     hk-particle-drift var(--hk-p-drift) ease-in-out var(--hk-p-delay) infinite alternate,
     hk-particle-glow var(--hk-p-glow) ease-in-out var(--hk-p-delay) infinite alternate;
@@ -357,17 +424,14 @@ body {
   to { opacity: 0.85; }
 }
 
-/* Respect the OS-level motion preference - part of M3's own motion guidance,
-   not an afterthought. Collapsing the duration tokens to near-zero mutes
-   every transition/animation that references them in one place, rather than
-   repeating an override per selector. The particle field is hidden outright
-   rather than just slowed - a perpetually drifting full-screen layer is
-   exactly the kind of motion this preference exists to remove. */
 @media (prefers-reduced-motion: reduce) {
   :root { --duration-short: 0.01ms; --duration-medium: 0.01ms; }
-  .hk-param-card, .hk-chart-card, .hk-heatmap-card,
-  .hk-drawer.active, .hk-lock-toast.active {
-    animation: none;
-  }
+  .hk-widget, .hk-drawer.active, .hk-lock-toast.active { animation: none; }
   .hk-particles { display: none; }
+}
+
+@media (max-width: 720px) {
+  .hk-canvas { min-height: 0; }
+  .hk-widget { position: static !important; width: 100% !important; height: auto !important; margin-bottom: var(--space-4); resize: none; }
+  .hk-drawer { right: 12px; left: 12px; bottom: 12px; width: auto; max-width: none; }
 }

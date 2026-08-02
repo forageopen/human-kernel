@@ -1,298 +1,135 @@
-// Six additional visualization cards (requested: a GitHub-style daily
-// calendar heatmap plus >=5 more chart types, chosen against the taxonomy at
-// datavizproject.com - Heat Map, Bar Chart, Histogram, Donut Chart, Radar
-// Diagram all appear there as established chart types).
+// GitHub-style calendar heatmap (2026-08-02, fourth pass - real-data variety
+// fix). The six Chart.js cards that used to live in this file (domain count,
+// confidence histogram, status donut, relationship types, source files,
+// domain-confidence radar) are gone per direct instruction ("lets scrap:
+// parameters by domain, confidence distribution, status breakdown,
+// relationship type, evidence by source file, mean confidence by domain") -
+// see render.ts and index.html, which no longer load Chart.js at all now
+// that nothing here uses it.
 //
-// Every chart here derives from fields that actually exist on Evidence /
-// Parameter / Relationship (see ../types.ts). None of them invent a data
-// axis the schema doesn't have - that's the exact mistake flagged earlier
-// with a literal SWOT card (Strengths/Weaknesses/Opportunities/Threats has
-// no home in this data model; domain/status/confidence/timestamp do).
-//
-// Chart.js is loaded as a plain global script via CDN in index.html, not an
-// npm dependency - keeps the no-bundler, vanilla-DOM architecture intact.
-// Deliberately absent in jsdom tests (no canvas support there), so drawChart
-// no-ops when the global isn't present - tests exercise the DOM/data-shaping
-// logic, not Chart.js's own internal canvas rendering.
+// This file used to show one calendar month at a time, defaulting to
+// whichever month had the most real Evidence - direct feedback: "it's just
+// one day that's shown active - introduce variety." The real vault data
+// (sample-vault/README.md) has genuine activity on three real, separate
+// dates thirteen months apart (2025-06-22, 2026-05-15, 2026-07-04) that a
+// single-month view can only ever show one of at a time. The fix is not to
+// invent more data - it's to stop hiding the real data that already exists:
+// this now renders a GitHub-contribution-style week-column grid spanning
+// from the earliest real Evidence date to today, so all three real active
+// periods are visible at once. Zero invented entries.
 
-import type { Evidence, Parameter, Relationship } from "../types.js";
+import type { Evidence } from "../types.js";
 
-declare const Chart: new (
-  ctx: HTMLCanvasElement,
-  config: unknown
-) => { destroy(): void };
-
-const EMBER = "#c8a96e";
-const SAGE = "#7a8c6e";
-const CRIMSON = "#c1286b";
-const STONE = "#b0ada4";
-const GRID_LINE = "rgba(200, 169, 110, 0.12)";
-
-const liveCharts = new Map<string, { destroy(): void }>();
-
-function drawChart(canvas: HTMLCanvasElement, id: string, config: unknown): void {
-  if (typeof Chart === "undefined") return; // no CDN script loaded (e.g. jsdom tests) - nothing to draw
-  liveCharts.get(id)?.destroy();
-  liveCharts.set(id, new Chart(canvas, config));
+function dateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function baseScaleOptions() {
-  return {
-    x: { ticks: { color: STONE, font: { family: "JetBrains Mono", size: 10 } }, grid: { color: GRID_LINE } },
-    y: { ticks: { color: STONE, font: { family: "JetBrains Mono", size: 10 } }, grid: { color: GRID_LINE }, beginAtZero: true },
-  };
-}
-
-/** Bar: Parameter count per Domain - volume, not quality. */
-export function drawDomainCountChart(canvas: HTMLCanvasElement, parameters: Parameter[]): void {
-  const byDomain = new Map<string, number>();
-  for (const p of parameters) byDomain.set(p.domain, (byDomain.get(p.domain) ?? 0) + 1);
-  drawChart(canvas, "domain-count", {
-    type: "bar",
-    data: {
-      labels: Array.from(byDomain.keys()),
-      datasets: [{ data: Array.from(byDomain.values()), backgroundColor: EMBER, borderRadius: 4 }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false, // fill .hk-chart-canvas-wrap's fixed height so every card in the grid matches
-      plugins: { legend: { display: false } },
-      scales: baseScaleOptions(),
-    },
-  });
-}
-
-/** Histogram: Parameter confidence distribution, 5 bins across 0.0-1.0. */
-export function drawConfidenceHistogram(canvas: HTMLCanvasElement, parameters: Parameter[]): void {
-  const bins = [0, 0, 0, 0, 0];
-  for (const p of parameters) {
-    const idx = Math.min(4, Math.max(0, Math.floor(p.confidence / 0.2)));
-    bins[idx] = (bins[idx] ?? 0) + 1;
-  }
-  drawChart(canvas, "confidence-hist", {
-    type: "bar",
-    data: {
-      labels: ["0.0-0.2", "0.2-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"],
-      datasets: [{ data: bins, backgroundColor: SAGE, borderRadius: 4 }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: baseScaleOptions(),
-    },
-  });
-}
-
-/** Donut: Parameter status breakdown (draft / verified / disputed). */
-export function drawStatusDonut(canvas: HTMLCanvasElement, parameters: Parameter[]): void {
-  const counts = { draft: 0, verified: 0, disputed: 0 };
-  for (const p of parameters) counts[p.status] += 1;
-  drawChart(canvas, "status-donut", {
-    type: "doughnut",
-    data: {
-      labels: ["Draft", "Verified", "Disputed"],
-      datasets: [{ data: [counts.draft, counts.verified, counts.disputed], backgroundColor: [STONE, SAGE, CRIMSON] }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: STONE, font: { family: "DM Sans" } } } },
-    },
-  });
-}
-
-/** Horizontal bar: Relationship type breakdown (causal/correlated/contradicts/supports). */
-export function drawRelationshipTypeChart(canvas: HTMLCanvasElement, relationships: Relationship[]): void {
-  const counts = { causal: 0, correlated: 0, contradicts: 0, supports: 0 };
-  for (const r of relationships) counts[r.relationshipType] += 1;
-  drawChart(canvas, "relationship-types", {
-    type: "bar",
-    data: {
-      labels: ["Causal", "Correlated", "Contradicts", "Supports"],
-      datasets: [
-        {
-          data: [counts.causal, counts.correlated, counts.contradicts, counts.supports],
-          backgroundColor: EMBER,
-          borderRadius: 4,
-        },
-      ],
-    },
-    options: {
-      indexAxis: "y" as const,
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: baseScaleOptions(),
-    },
-  });
-}
-
-/** Horizontal bar: which source files contributed the most Evidence (top 8). */
-export function drawSourceFileChart(canvas: HTMLCanvasElement, evidence: Evidence[]): void {
-  const byFile = new Map<string, number>();
-  for (const e of evidence) byFile.set(e.sourceFile, (byFile.get(e.sourceFile) ?? 0) + 1);
-  const sorted = Array.from(byFile.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8);
-  drawChart(canvas, "source-files", {
-    type: "bar",
-    data: {
-      labels: sorted.map(([f]) => f),
-      datasets: [{ data: sorted.map(([, c]) => c), backgroundColor: SAGE, borderRadius: 4 }],
-    },
-    options: {
-      indexAxis: "y" as const,
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: baseScaleOptions(),
-    },
-  });
-}
-
-/** Radar: mean confidence per Domain - the quality/certainty counterpart to
- * the plain count bar above (two different real statistics, not padding). */
-export function drawDomainConfidenceRadar(canvas: HTMLCanvasElement, parameters: Parameter[]): void {
-  const byDomain = new Map<string, number[]>();
-  for (const p of parameters) {
-    const list = byDomain.get(p.domain) ?? [];
-    list.push(p.confidence);
-    byDomain.set(p.domain, list);
-  }
-  const labels = Array.from(byDomain.keys());
-  const data = labels.map((d) => {
-    const vals = byDomain.get(d) ?? [];
-    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-  });
-  drawChart(canvas, "domain-radar", {
-    type: "radar",
-    data: {
-      labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: "rgba(200, 169, 110, 0.15)",
-          borderColor: EMBER,
-          pointBackgroundColor: EMBER,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        r: {
-          min: 0,
-          max: 1,
-          ticks: { color: STONE, backdropColor: "transparent" },
-          grid: { color: GRID_LINE },
-          angleLines: { color: GRID_LINE },
-          pointLabels: { color: STONE, font: { family: "JetBrains Mono", size: 10 } },
-        },
-      },
-    },
-  });
-}
-
-/** Picks the calendar month with the most Evidence to show by default. A
- * hardcoded "always show the current month" default silently shows an empty
- * grid for any vault whose real activity doesn't happen to fall in the
- * current month - true for the bundled reference profile itself, whose real
- * file-mtimes cluster on one evening over a year ago (see sample-vault/
- * README.md). Falls back to today when there's no Evidence at all. */
-export function monthWithMostEvidence(evidence: Evidence[]): Date {
-  if (evidence.length === 0) return new Date();
-  const counts = new Map<string, number>();
+/** The real span to render: earliest real Evidence timestamp through today
+ * (or through the latest Evidence timestamp, if that's somehow in the
+ * future). Falls back to just today when there's no Evidence at all - never
+ * a fabricated range. */
+export function evidenceDateRange(evidence: Evidence[], now: Date = new Date()): { start: Date; end: Date } {
+  if (evidence.length === 0) return { start: now, end: now };
+  let min = new Date(evidence[0]!.timestamp);
+  let max = min;
   for (const e of evidence) {
     const d = new Date(e.timestamp);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (d.getTime() < min.getTime()) min = d;
+    if (d.getTime() > max.getTime()) max = d;
   }
-  let bestKey = "";
-  let bestCount = -1;
-  for (const [key, count] of counts) {
-    if (count > bestCount) {
-      bestKey = key;
-      bestCount = count;
-    }
-  }
-  const [year, month] = bestKey.split("-").map(Number);
-  return new Date(year ?? new Date().getFullYear(), month ?? 0, 1);
+  if (now.getTime() > max.getTime()) max = now;
+  return { start: min, end: max };
 }
 
-/** GitHub-style calendar heatmap, one real month, hand-built (no chart lib
- * needed for this one). Cell intensity = count of Evidence timestamps that
- * calendar day, scaled against that month's own max - a proxy for
- * documentation activity, deliberately not labeled "productivity" since the
- * data doesn't support that stronger claim. */
-export function renderEvidenceHeatmap(evidence: Evidence[], monthDate: Date = new Date()): HTMLElement {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstWeekday = new Date(year, month, 1).getDay();
+/** GitHub-style calendar heatmap: weeks as columns (Sun-Sat rows), spanning
+ * the real Evidence date range. Color-only intensity (no visible digit -
+ * same reasoning as before: a digit forces cells to be big), exact
+ * date/count on hover `title`, month labels above the column where each
+ * month starts, Less->More legend. Cell intensity is scaled against the
+ * busiest single day across the WHOLE rendered range (not per-month), so
+ * relative intensity stays meaningful across the wider span. */
+export function renderEvidenceHeatmap(evidence: Evidence[], now: Date = new Date()): HTMLElement {
+  const { start, end } = evidenceDateRange(evidence, now);
 
-  const countsByDay = new Map<number, number>();
+  const gridStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  gridStart.setDate(gridStart.getDate() - gridStart.getDay()); // back up to the Sunday on/before start
+  const gridEnd = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+  const countsByDate = new Map<string, number>();
   for (const e of evidence) {
-    const d = new Date(e.timestamp);
-    if (d.getFullYear() === year && d.getMonth() === month) {
-      countsByDay.set(d.getDate(), (countsByDay.get(d.getDate()) ?? 0) + 1);
-    }
+    const key = dateKey(new Date(e.timestamp));
+    countsByDate.set(key, (countsByDate.get(key) ?? 0) + 1);
   }
-  const maxCount = Math.max(1, ...Array.from(countsByDay.values()));
-  const monthLabel = monthDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const maxCount = Math.max(1, ...Array.from(countsByDate.values()));
 
   const wrap = document.createElement("div");
   wrap.className = "hk-heatmap";
 
   const label = document.createElement("div");
   label.className = "hk-label";
-  label.textContent = `EVIDENCE ACTIVITY — ${monthLabel.toUpperCase()}`;
+  label.textContent = "Activity";
   wrap.appendChild(label);
 
   const caption = document.createElement("div");
   caption.className = "hk-muted hk-heatmap-caption";
-  caption.textContent =
-    "Evidence entries captured per day - a proxy for documentation activity, not a productivity score.";
+  caption.textContent = "How often new entries were added, day by day.";
   wrap.appendChild(caption);
 
-  const grid = document.createElement("div");
-  grid.className = "hk-heatmap-grid";
+  const scroll = document.createElement("div");
+  scroll.className = "hk-heatmap-scroll";
 
-  for (const dow of ["S", "M", "T", "W", "T", "F", "S"]) {
-    const h = document.createElement("div");
-    h.className = "hk-heatmap-dow";
-    h.textContent = dow;
-    grid.appendChild(h);
+  const dowCol = document.createElement("div");
+  dowCol.className = "hk-heatmap-dow-col";
+  const dowSpacer = document.createElement("div");
+  dowSpacer.className = "hk-heatmap-month-slot";
+  dowCol.appendChild(dowSpacer);
+  for (const dow of ["", "Mon", "", "Wed", "", "Fri", ""]) {
+    const d = document.createElement("div");
+    d.className = "hk-heatmap-dow";
+    d.textContent = dow;
+    dowCol.appendChild(d);
   }
+  scroll.appendChild(dowCol);
 
-  for (let i = 0; i < firstWeekday; i++) {
-    const filler = document.createElement("div");
-    filler.className = "hk-heatmap-cell empty";
-    grid.appendChild(filler);
+  const weeksWrap = document.createElement("div");
+  weeksWrap.className = "hk-heatmap-weeks";
+
+  const cursor = new Date(gridStart);
+  let lastMonth = -1;
+  while (cursor.getTime() <= gridEnd.getTime()) {
+    const weekCol = document.createElement("div");
+    weekCol.className = "hk-heatmap-week";
+
+    const monthSlot = document.createElement("div");
+    monthSlot.className = "hk-heatmap-month-slot";
+    if (cursor.getMonth() !== lastMonth) {
+      monthSlot.textContent = cursor.toLocaleDateString("en-US", { month: "short" });
+      lastMonth = cursor.getMonth();
+    }
+    weekCol.appendChild(monthSlot);
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(cursor);
+      const cell = document.createElement("div");
+      if (day.getTime() < gridStart.getTime() || day.getTime() > gridEnd.getTime()) {
+        cell.className = "hk-heatmap-cell empty";
+      } else {
+        const key = dateKey(day);
+        const count = countsByDate.get(key) ?? 0;
+        const intensity = count === 0 ? 0 : Math.min(4, Math.ceil((count / maxCount) * 4));
+        cell.className = `hk-heatmap-cell level-${intensity}`;
+        cell.dataset.date = key;
+        const dayLabel = day.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        cell.title = `${dayLabel}: ${count} ${count === 1 ? "entry" : "entries"}`;
+      }
+      weekCol.appendChild(cell);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeksWrap.appendChild(weekCol);
   }
+  scroll.appendChild(weeksWrap);
+  wrap.appendChild(scroll);
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const count = countsByDay.get(day) ?? 0;
-    const intensity = count === 0 ? 0 : Math.min(4, Math.ceil((count / maxCount) * 4));
-    const cell = document.createElement("div");
-    cell.className = `hk-heatmap-cell level-${intensity}`;
-    cell.dataset.day = String(day);
-    // GitHub-contribution style: color-only intensity, no visible digit inside
-    // the cell (that's what was forcing cells to be big enough to hold a
-    // number - direct feedback: "too big... don't like square if big like
-    // that"). The exact date/count is still available, just on hover/focus
-    // via title, same as GitHub's own graph - never lost, just not shouted.
-    cell.title = `${monthLabel} ${day}: ${count} evidence ${count === 1 ? "entry" : "entries"}`;
-    grid.appendChild(cell);
-  }
-
-  wrap.appendChild(grid);
-
-  // Less -> More legend, same convention GitHub's own contribution graph
-  // uses, reusing the identical level-N swatch classes (so the legend can
-  // never visually drift out of sync with the grid's own color scale).
   const legend = document.createElement("div");
   legend.className = "hk-heatmap-legend";
   const less = document.createElement("span");

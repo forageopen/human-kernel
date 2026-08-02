@@ -9,8 +9,14 @@ import {
   closeDrawer,
   type DashboardCallbacks,
 } from "./render.js";
-import type { HumanKernelIndex, Parameter } from "../types.js";
+import type { Evidence, HumanKernelIndex } from "../types.js";
 import type { ParseWarning } from "../evidence-parser/index.js";
+
+// Evidence dated "today" (computed at test-run time, not hardcoded) so it
+// always falls inside renderEvidenceHeatmap's real default range (earliest
+// evidence through "now") regardless of which real calendar day the suite
+// happens to run on.
+const TODAY_KEY = new Date().toISOString().slice(0, 10);
 
 function makeIndex(overrides?: Partial<HumanKernelIndex>): HumanKernelIndex {
   return {
@@ -21,7 +27,7 @@ function makeIndex(overrides?: Partial<HumanKernelIndex>): HumanKernelIndex {
         id: "ev-1",
         sourceFile: "notes/monday.md",
         sourceRef: "callout#1",
-        timestamp: "2026-08-01T00:00:00.000Z",
+        timestamp: `${TODAY_KEY}T09:00:00.000Z`,
         context: "planning session",
         observation: "Deferred the decision twice before committing.",
         confidence: 0.7,
@@ -44,7 +50,7 @@ function makeIndex(overrides?: Partial<HumanKernelIndex>): HumanKernelIndex {
 
 function makeCallbacks(overrides?: Partial<DashboardCallbacks>): DashboardCallbacks {
   return {
-    onOpenParameter: vi.fn(),
+    onOpenDate: vi.fn(),
     onRescan: vi.fn(),
     onConnectOwnVault: vi.fn(),
     onViewSample: vi.fn(),
@@ -56,7 +62,7 @@ describe("renderUnsupportedBrowser", () => {
   it("renders a message mentioning unsupported browser", () => {
     const root = document.createElement("div");
     renderUnsupportedBrowser(root);
-    expect(root.textContent).toMatch(/not supported/i);
+    expect(root.textContent).toMatch(/can't open a folder/i);
   });
 });
 
@@ -101,150 +107,167 @@ describe("renderNotice", () => {
 });
 
 describe("renderDashboard", () => {
-  it("groups parameters by domain and renders a card per parameter", () => {
-    const root = document.createElement("div");
-    const index = makeIndex();
-    const callbacks = makeCallbacks();
+  it("renders the source banner, and the heatmap goes into heatmapBody, not appRoot", () => {
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
+    renderDashboard(appRoot, heatmapBody, makeIndex(), [], "own-vault", makeCallbacks());
 
-    renderDashboard(root, index, [], "own-vault", callbacks);
-
-    const domainLabels = Array.from(root.querySelectorAll(".hk-label")).map((el) => el.textContent);
-    expect(domainLabels).toContain("DOMAIN: HUMAN");
-
-    const cards = root.querySelectorAll(".hk-param-card");
-    expect(cards.length).toBe(1);
-    cards[0]?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(callbacks.onOpenParameter).toHaveBeenCalledWith(index.parameters[0]);
+    expect(appRoot.querySelector(".hk-source-banner")).not.toBeNull();
+    expect(appRoot.querySelector(".hk-heatmap")).toBeNull();
+    expect(heatmapBody.querySelector(".hk-heatmap")).not.toBeNull();
   });
 
-  it("parameter cards are keyboard-focusable and open on Enter/Space, not click-only", () => {
-    const root = document.createElement("div");
+  it("no longer renders any domain-grouped parameter grid or chart cards (scrapped 2026-08-02)", () => {
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
+    renderDashboard(appRoot, heatmapBody, makeIndex(), [], "own-vault", makeCallbacks());
+
+    expect(appRoot.querySelector(".hk-param-card")).toBeNull();
+    expect(appRoot.querySelector(".hk-chart-card")).toBeNull();
+    expect(appRoot.querySelector(".hk-overview")).toBeNull();
+    expect(heatmapBody.querySelector(".hk-chart-card")).toBeNull();
+  });
+
+  it("clicking a day with real evidence calls onOpenDate with that date's evidence, filtered correctly", () => {
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
     const index = makeIndex();
     const callbacks = makeCallbacks();
-    renderDashboard(root, index, [], "own-vault", callbacks);
+    renderDashboard(appRoot, heatmapBody, index, [], "own-vault", callbacks);
 
-    const card = root.querySelector<HTMLElement>(".hk-param-card");
-    expect(card?.tabIndex).toBe(0);
-    expect(card?.getAttribute("role")).toBe("button");
+    const activeCell = heatmapBody.querySelector<HTMLElement>(`.hk-heatmap-cell[data-date="${TODAY_KEY}"]`);
+    expect(activeCell).not.toBeNull();
+    activeCell?.dispatchEvent(new Event("click", { bubbles: true }));
 
-    card?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-    expect(callbacks.onOpenParameter).toHaveBeenCalledWith(index.parameters[0]);
+    expect(callbacks.onOpenDate).toHaveBeenCalledTimes(1);
+    const [calledDate, calledEvidence] = (callbacks.onOpenDate as ReturnType<typeof vi.fn>).mock.calls[0] as [string, Evidence[]];
+    expect(calledDate).toBe(TODAY_KEY);
+    expect(calledEvidence).toEqual(index.evidence);
+  });
 
-    card?.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
-    expect(callbacks.onOpenParameter).toHaveBeenCalledTimes(2);
+  it("a day with no evidence (level-0) is not wired to open anything", () => {
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
+    const callbacks = makeCallbacks();
+    renderDashboard(appRoot, heatmapBody, makeIndex(), [], "own-vault", callbacks);
+
+    const emptyCell = heatmapBody.querySelector<HTMLElement>(".hk-heatmap-cell.level-0");
+    emptyCell?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(callbacks.onOpenDate).not.toHaveBeenCalled();
   });
 
   it("renders one warning row per warning, never silently dropping any", () => {
-    const root = document.createElement("div");
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
     const warnings: ParseWarning[] = [
       { sourceFile: "a.md", sourceRef: "callout#1", message: "bad domain" },
       { sourceFile: "b.md", sourceRef: "callout#2", message: "bad confidence" },
     ];
-    renderDashboard(root, makeIndex(), warnings, "own-vault", makeCallbacks());
+    renderDashboard(appRoot, heatmapBody, makeIndex(), warnings, "own-vault", makeCallbacks());
 
-    const rows = root.querySelectorAll(".hk-warn-row");
+    const rows = appRoot.querySelectorAll(".hk-warn-row");
     expect(rows.length).toBe(2);
   });
 
-  it("shows an explicit empty message instead of a blank grid when there are no parameters", () => {
-    const root = document.createElement("div");
-    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "own-vault", makeCallbacks());
-    expect(root.textContent).toMatch(/no \[!evidence\] blocks were found/i);
+  it("shows an explicit empty message instead of nothing when there are no parameters", () => {
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
+    renderDashboard(appRoot, heatmapBody, makeIndex({ parameters: [], evidence: [] }), [], "own-vault", makeCallbacks());
+    expect(appRoot.textContent).toMatch(/nothing usable was found/i);
   });
 
   it("shows the sample-specific empty message when viewing the reference profile", () => {
-    const root = document.createElement("div");
-    renderDashboard(root, makeIndex({ parameters: [], evidence: [] }), [], "sample", makeCallbacks());
-    expect(root.textContent).toMatch(/reference profile is still being prepared/i);
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
+    renderDashboard(appRoot, heatmapBody, makeIndex({ parameters: [], evidence: [] }), [], "sample", makeCallbacks());
+    expect(appRoot.textContent).toMatch(/example profile is still being put together/i);
   });
 
   it("wires the rescan button to onRescan, and only shows it for a connected vault", () => {
-    const root = document.createElement("div");
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
     const callbacks = makeCallbacks();
-    renderDashboard(root, makeIndex(), [], "own-vault", callbacks);
-    const rescanBtn = root.querySelector<HTMLElement>(".hk-toolbar .hk-primary");
+    renderDashboard(appRoot, heatmapBody, makeIndex(), [], "own-vault", callbacks);
+    const rescanBtn = appRoot.querySelector<HTMLElement>(".hk-toolbar .hk-primary");
     expect(rescanBtn).not.toBeNull();
     rescanBtn?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(callbacks.onRescan).toHaveBeenCalledTimes(1);
 
     const sampleRoot = document.createElement("div");
-    renderDashboard(sampleRoot, makeIndex(), [], "sample", makeCallbacks());
+    const sampleHeatmapBody = document.createElement("div");
+    renderDashboard(sampleRoot, sampleHeatmapBody, makeIndex(), [], "sample", makeCallbacks());
     expect(sampleRoot.querySelector(".hk-toolbar")).toBeNull();
-  });
-
-  it("renders the profile overview (heatmap + chart grid) above the domain grid when parameters exist", () => {
-    const root = document.createElement("div");
-    renderDashboard(root, makeIndex(), [], "sample", makeCallbacks());
-    expect(root.querySelector(".hk-overview")).not.toBeNull();
-    expect(root.querySelector(".hk-heatmap-card")).not.toBeNull();
-    expect(root.querySelectorAll(".hk-chart-card").length).toBe(6);
-  });
-
-  it("opens the evidence drawer directly on card click - no mode gating (removed 2026-08-02)", () => {
-    const root = document.createElement("div");
-    const index = makeIndex();
-    renderDashboard(root, index, [], "own-vault", {
-      onOpenParameter: (param) => renderDrawer(root, param, index, () => closeDrawer(root)),
-      onRescan: vi.fn(),
-      onConnectOwnVault: vi.fn(),
-      onViewSample: vi.fn(),
-    });
-
-    root.querySelector<HTMLElement>(".hk-param-card")?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(root.querySelector(".hk-drawer")?.classList.contains("active")).toBe(true);
   });
 });
 
 describe("renderDashboard source banner (view: sample vs. own-vault)", () => {
-  it("sample view: names the reference profile and offers to connect a vault", () => {
-    const root = document.createElement("div");
+  it("sample view: names the example profile and offers to connect a vault", () => {
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
     const callbacks = makeCallbacks();
-    renderDashboard(root, makeIndex(), [], "sample", callbacks);
+    renderDashboard(appRoot, heatmapBody, makeIndex(), [], "sample", callbacks);
 
-    expect(root.querySelector(".hk-source-banner")?.textContent).toMatch(/reference profile/i);
-    root.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(appRoot.querySelector(".hk-source-banner")?.textContent).toMatch(/example profile/i);
+    appRoot.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(callbacks.onConnectOwnVault).toHaveBeenCalledTimes(1);
   });
 
-  it("own-vault view: says a vault is connected and offers to view the sample instead", () => {
-    const root = document.createElement("div");
+  it("own-vault view: says it's showing the visitor's own notes and offers to go back to the sample", () => {
+    const appRoot = document.createElement("div");
+    const heatmapBody = document.createElement("div");
     const callbacks = makeCallbacks();
-    renderDashboard(root, makeIndex(), [], "own-vault", callbacks);
+    renderDashboard(appRoot, heatmapBody, makeIndex(), [], "own-vault", callbacks);
 
-    expect(root.querySelector(".hk-source-banner")?.textContent).toMatch(/your own vault is connected/i);
-    root.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(appRoot.querySelector(".hk-source-banner")?.textContent).toMatch(/your own notes/i);
+    appRoot.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(callbacks.onViewSample).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("renderDrawer / closeDrawer", () => {
-  it("renders every linked Evidence for the given Parameter, never fabricated ones", () => {
-    const root = document.createElement("div");
+  it("renders every given Evidence entry, never fabricated ones", () => {
+    const drawer = document.createElement("div");
     const index = makeIndex();
-    const param = index.parameters[0] as Parameter;
 
-    renderDrawer(root, param, index, vi.fn());
+    renderDrawer(drawer, "August 2, 2026", index.evidence, vi.fn());
 
-    const rows = root.querySelectorAll(".hk-evidence-row");
+    const rows = drawer.querySelectorAll(".hk-evidence-row");
     expect(rows.length).toBe(index.evidence.length);
-    expect(root.querySelector(".hk-src")?.textContent).toContain("notes/monday.md");
-    expect(root.querySelector(".hk-drawer")?.classList.contains("active")).toBe(true);
+    expect(drawer.querySelector(".hk-src")?.textContent).toContain("notes/monday.md");
+    expect(drawer.classList.contains("active")).toBe(true);
+  });
+
+  it("shows an explicit message instead of a blank popup when the day has no evidence", () => {
+    const drawer = document.createElement("div");
+    renderDrawer(drawer, "January 1, 2026", [], vi.fn());
+    expect(drawer.textContent).toMatch(/nothing recorded/i);
   });
 
   it("closeDrawer removes the active class without destroying the drawer", () => {
-    const root = document.createElement("div");
-    const index = makeIndex();
-    renderDrawer(root, index.parameters[0] as Parameter, index, vi.fn());
-    closeDrawer(root);
-    expect(root.querySelector(".hk-drawer")?.classList.contains("active")).toBe(false);
+    const drawer = document.createElement("div");
+    renderDrawer(drawer, "August 2, 2026", makeIndex().evidence, vi.fn());
+    closeDrawer(drawer);
+    expect(drawer.classList.contains("active")).toBe(false);
   });
 
   it("the drawer's own close control calls the onClose callback", () => {
-    const root = document.createElement("div");
-    const index = makeIndex();
+    const drawer = document.createElement("div");
     const onClose = vi.fn();
-    renderDrawer(root, index.parameters[0] as Parameter, index, onClose);
-    root.querySelector<HTMLElement>(".hk-close")?.dispatchEvent(new Event("click", { bubbles: true }));
+    renderDrawer(drawer, "August 2, 2026", makeIndex().evidence, onClose);
+    drawer.querySelector<HTMLElement>(".hk-close")?.dispatchEvent(new Event("click", { bubbles: true }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("has exactly one drag handle even after being re-rendered for a different day (no orphaned handle)", () => {
+    const drawer = document.createElement("div");
+    renderDrawer(drawer, "August 2, 2026", makeIndex().evidence, vi.fn());
+    const firstHandle = drawer.querySelector(".hk-drawer-handle");
+
+    renderDrawer(drawer, "January 1, 2026", [], vi.fn());
+    const handlesAfterSecondRender = drawer.querySelectorAll(".hk-drawer-handle");
+
+    expect(handlesAfterSecondRender.length).toBe(1);
+    expect(handlesAfterSecondRender[0]).toBe(firstHandle); // same node instance, not replaced
+    expect(drawer.textContent).toMatch(/nothing recorded/i);
   });
 });
