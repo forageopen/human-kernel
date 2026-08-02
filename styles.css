@@ -1,88 +1,139 @@
-/* Reuses the visual language validated in wireframes/data-states.html and the
-   original Draft 5 prototype (Brief v2 §9) - dark, mission-control aesthetic,
-   no gamification. */
+/* Forage DeepMind brand system (forage-colorway skill, FDMAI-BRAND-001 v1.1) -
+   Forage Deep Minds tier pairing: Dark x Ember Gold. Replaces the earlier
+   ad-hoc green-terminal palette (real gap, caught 2026-08-02 against a
+   sibling dashboard-mockup session that had already fixed the same mistake).
+   Reuses the layout validated in wireframes/data-states.html and Draft 5
+   (Brief v2 SS9) - dark, mission-control aesthetic, no gamification. */
 
 :root {
-  --bg: #070b0a; --panel: #101615; --line: #27332f; --text: #e5ebe7; --muted: #87938d;
-  --green: #72d59a; --amber: #d9b65c; --red: #df7272;
+  /* Locked Forage Deep Minds pairing */
+  --bg: #1c1c1a;              /* Deep Charcoal - primary dark surface */
+  --card: #262624;            /* Near Black - elevated card/surface on dark */
+  --card-alt: #2a2a28;        /* Charcoal Mist - nested surface (drawer, toast) */
+  --text: rgba(237, 233, 224, 0.88); /* body text per locked pairing */
+  --text-strong: #ede9e0;
+  --ember: #c8a96e;           /* Ember Gold - primary accent, headings, CTAs, rule lines */
+  --sage: #7a8c6e;            /* Muted Sage - secondary tags/status on dark */
+  --crimson: #c1286b;         /* Rose Crimson - warnings/critical only, never decorative */
+  --stone: #b0ada4;           /* Stone Gray - tags, footer, captions, metadata */
+  --border-hint: rgba(200, 169, 110, 0.12); /* locked pairing border hint */
+
+  /* Type stack per FDMAI-BRAND-001 */
+  --font-display: "Crimson Text", Georgia, serif;      /* hero/wordmark only */
+  --font-heading: "DM Sans", Arial, sans-serif;
+  --font-body: "DM Sans", Helvetica, sans-serif;
+  --font-mono: "JetBrains Mono", "Courier New", monospace; /* tags, codes, reference IDs */
 }
 * { box-sizing: border-box; }
 body {
   margin: 0; min-height: 100vh;
-  background: radial-gradient(circle at top, #192521, #070b0a 70%);
-  color: var(--text); font-family: Inter, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text); font-family: var(--font-body);
 }
-.hk-topbar { padding: 18px 24px; border-bottom: 1px solid var(--line); }
-.hk-topbar h1 { margin: 0; font-size: 22px; }
-.hk-sub { color: var(--muted); font-size: 12px; }
+.hk-topbar { padding: 18px 24px; border-bottom: 1px solid var(--border-hint); }
+.hk-topbar h1 {
+  margin: 0; font-size: 40px; font-weight: 400; font-family: var(--font-display); color: var(--ember);
+}
+.hk-sub { color: var(--stone); font-size: 12px; font-family: var(--font-mono); }
 .hk-page { padding: 18px 24px 40px; position: relative; min-height: 60vh; }
 
 .hk-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   min-height: 340px; gap: 14px; text-align: center;
 }
-.hk-empty-icon { font-size: 40px; opacity: 0.5; }
-.hk-muted { color: var(--muted); font-size: 12.5px; max-width: 420px; }
+.hk-empty-icon { font-size: 40px; opacity: 0.5; color: var(--ember); }
+.hk-empty b { font-family: var(--font-heading); font-weight: 600; color: var(--text-strong); }
+.hk-muted { color: var(--stone); font-size: 12.5px; max-width: 420px; font-family: var(--font-body); }
 
 .hk-primary {
-  background: #18231f; border: 1px solid var(--green); color: var(--green);
-  padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  background: transparent; border: 1px solid var(--ember); color: var(--ember);
+  padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: var(--font-heading);
 }
+.hk-primary:hover { background: rgba(200, 169, 110, 0.08); }
 .hk-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 
-/* Immersive/Inspect (Brief v2 §9): Immersive = ambient/observation only, no
+/* Immersive/Inspect (Brief v2 SS9): Immersive = ambient/observation only, no
    scroll; Inspect = investigation, scroll + drawer enabled. */
 body.hk-immersive { overflow: hidden; }
 .hk-mode-toggle { display: flex; gap: 6px; }
 .hk-mode-btn {
-  background: transparent; border: 1px solid var(--line); color: var(--muted);
-  padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 12px;
+  background: transparent; border: 1px solid var(--border-hint); color: var(--stone);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 11px; font-family: var(--font-heading);
+  text-transform: uppercase; letter-spacing: 0.1em;
 }
-.hk-mode-btn.active { border-color: var(--green); color: var(--green); background: rgba(114,213,154,0.08); }
+.hk-mode-btn.active { border-color: var(--ember); color: var(--ember); background: rgba(200, 169, 110, 0.08); }
 .hk-grid.immersive .hk-param-card { cursor: default; }
 
 .hk-card {
-  background: linear-gradient(145deg, #111716, #0b100f); border: 1px solid var(--line);
+  background: var(--card); border: 1px solid var(--border-hint);
   border-radius: 14px; padding: 18px; margin-bottom: 16px;
 }
 .hk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-.hk-label { font-size: 11px; letter-spacing: 2px; color: var(--green); margin-bottom: 12px; }
+.hk-label {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stone);
+  margin-bottom: 12px; font-family: var(--font-mono);
+}
 
 .hk-warn-row {
-  display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--amber);
-  border-radius: 8px; background: rgba(217,182,92,0.06); margin-bottom: 8px; font-size: 12.5px;
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--crimson);
+  border-radius: 8px; background: rgba(193, 40, 107, 0.08); margin-bottom: 8px; font-size: 12.5px;
+  font-family: var(--font-body);
 }
-.hk-tag { color: var(--amber); font-weight: 600; white-space: nowrap; }
+.hk-tag {
+  color: var(--crimson); font-weight: 600; white-space: nowrap; font-family: var(--font-mono);
+  text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.08em;
+}
 
 .hk-param-card {
-  border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 10px; cursor: pointer;
+  border: 1px solid var(--border-hint); border-radius: 10px; padding: 14px; margin-bottom: 10px; cursor: pointer;
+  background: var(--card-alt);
 }
-.hk-param-card.disputed { border-color: var(--red); background: rgba(223,114,114,0.06); }
+.hk-param-card.disputed { border-color: var(--crimson); background: rgba(193, 40, 107, 0.06); }
 .hk-param-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.hk-status-pill { font-size: 10px; padding: 2px 8px; border-radius: 12px; border: 1px solid var(--line); }
-.hk-status-pill.disputed { border-color: var(--red); color: var(--red); }
-.hk-status-pill.verified { border-color: var(--green); color: var(--green); }
-.hk-status-pill.draft { border-color: var(--muted); color: var(--muted); }
-.hk-conf { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.hk-param-title b { font-family: var(--font-heading); font-weight: 600; font-size: 15px; color: var(--ember); }
+.hk-status-pill {
+  font-size: 9.5px; padding: 2px 8px; border-radius: 12px; border: 1px solid var(--border-hint);
+  font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em;
+}
+.hk-status-pill.disputed { border-color: var(--crimson); color: var(--crimson); }
+.hk-status-pill.verified { border-color: var(--sage); color: var(--sage); }
+.hk-status-pill.draft { border-color: var(--stone); color: var(--stone); }
+.hk-conf { font-size: 11.5px; color: var(--stone); margin-top: 4px; font-family: var(--font-mono); }
 
 .hk-drawer {
   position: fixed; right: 25px; bottom: 25px; width: 380px; max-height: 60vh; overflow-y: auto;
-  background: #0d1211; border: 1px solid var(--green); border-radius: 14px; padding: 20px;
-  display: none; box-shadow: 0 0 40px #000; z-index: 99;
+  background: var(--card-alt); border: 1px solid var(--ember); border-radius: 14px; padding: 20px;
+  display: none; box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); z-index: 99;
 }
 .hk-drawer.active { display: block; }
-.hk-close { position: absolute; top: 14px; right: 18px; cursor: pointer; color: var(--red); }
+.hk-close { position: absolute; top: 14px; right: 18px; cursor: pointer; color: var(--crimson); }
 .hk-evidence-row {
   display: flex; flex-direction: column; gap: 4px; padding: 10px 0;
-  border-bottom: 1px solid var(--line); font-size: 12px;
+  border-bottom: 1px solid var(--border-hint); font-size: 12px; font-family: var(--font-body);
 }
 .hk-evidence-row:last-child { border-bottom: none; }
-.hk-src { color: var(--green); }
-.hk-meta { color: var(--muted); font-size: 11px; }
+.hk-src { color: var(--ember); font-family: var(--font-mono); font-size: 11.5px; }
+.hk-meta { color: var(--stone); font-size: 11px; font-family: var(--font-mono); }
+
+/* Immersive-mode lock prompt: clicking a card in Immersive no longer does
+   nothing silently - this tells you why, and lets you act on it immediately. */
+.hk-lock-toast {
+  position: fixed; right: 25px; bottom: 25px; max-width: 340px;
+  background: var(--card-alt); border: 1px solid var(--crimson); border-radius: 12px;
+  padding: 16px 20px; display: none; box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); z-index: 99;
+  font-size: 12.5px; color: var(--text);
+}
+.hk-lock-toast.active { display: block; }
+.hk-lock-toast-btn {
+  display: block; margin-top: 10px; background: transparent; border: 1px solid var(--ember);
+  color: var(--ember); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11.5px;
+  font-family: var(--font-heading);
+}
+.hk-lock-toast-btn:hover { background: rgba(200, 169, 110, 0.08); }
 
 .hk-footer {
-  text-align: center; padding: 18px 24px 28px; color: var(--muted); font-size: 11.5px;
-  border-top: 1px solid var(--line); margin-top: 20px;
+  text-align: center; padding: 18px 24px 28px; color: var(--stone); font-size: 11.5px;
+  border-top: 1px solid var(--border-hint); margin-top: 20px; font-family: var(--font-mono);
 }
-.hk-footer a { color: var(--green); text-decoration: none; }
+.hk-footer a { color: var(--ember); text-decoration: none; }
 .hk-footer a:hover { text-decoration: underline; }

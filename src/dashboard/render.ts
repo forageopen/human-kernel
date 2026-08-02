@@ -216,3 +216,41 @@ export function closeDrawer(root: HTMLElement): void {
   const drawer = root.querySelector<HTMLElement>(".hk-drawer");
   drawer?.classList.remove("active");
 }
+
+/** Immersive mode is "observation only" (Brief v2 SS9) - clicking a card must
+ * not just silently do nothing. This says why, and lets you act on it in one
+ * click rather than making you find the mode toggle yourself. */
+export function renderImmersiveLockPrompt(root: HTMLElement, onSwitchToInspect: () => void): void {
+  let toast = root.querySelector<HTMLElement>(".hk-lock-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "hk-lock-toast";
+    root.appendChild(toast);
+  }
+  toast.innerHTML = "";
+
+  const msg = document.createElement("div");
+  msg.textContent = "Immersive mode is observation only - evidence isn't reachable here.";
+  toast.appendChild(msg);
+
+  const btn = document.createElement("button");
+  btn.className = "hk-lock-toast-btn";
+  btn.textContent = "Switch to Inspect";
+  btn.addEventListener("click", onSwitchToInspect);
+  toast.appendChild(btn);
+
+  const closeBtn = document.createElement("span");
+  closeBtn.className = "hk-close";
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => toast?.classList.remove("active"));
+  toast.appendChild(closeBtn);
+
+  toast.classList.add("active");
+}
+
+/** Dismisses the Immersive lock prompt - mirrors closeDrawer(). Also called
+ * automatically by renderDashboard's own root.innerHTML reset on re-render. */
+export function closeImmersiveLockPrompt(root: HTMLElement): void {
+  const toast = root.querySelector<HTMLElement>(".hk-lock-toast");
+  toast?.classList.remove("active");
+}

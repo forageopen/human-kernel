@@ -24,6 +24,7 @@ import {
   renderDashboard,
   renderDrawer,
   closeDrawer,
+  renderImmersiveLockPrompt,
   type DashboardMode,
 } from "./render.js";
 
@@ -107,7 +108,16 @@ export async function wireBrowserUI(root: HTMLElement): Promise<void> {
         // just in the CSS, so this holds even if a click reaches the handler.
         if (mode === "inspect" && currentIndex) {
           renderDrawer(root, param, currentIndex, () => closeDrawer(root));
+          return;
         }
+        // Immersive: don't silently do nothing on click - say why, and let
+        // one more click both switch mode and open the evidence that was
+        // actually asked for, instead of dropping the user back at square one.
+        renderImmersiveLockPrompt(root, () => {
+          mode = "inspect";
+          renderCurrent();
+          if (currentIndex) renderDrawer(root, param, currentIndex, () => closeDrawer(root));
+        });
       },
       onRescan: () => {
         void scanAndRender();

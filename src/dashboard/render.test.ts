@@ -6,6 +6,8 @@ import {
   renderDashboard,
   renderDrawer,
   closeDrawer,
+  renderImmersiveLockPrompt,
+  closeImmersiveLockPrompt,
 } from "./render.js";
 import type { HumanKernelIndex, Parameter } from "../types.js";
 import type { ParseWarning } from "../evidence-parser/index.js";
@@ -155,6 +157,38 @@ describe("renderDashboard mode toggle (Brief v2 §9: Immersive/Inspect)", () => 
       onModeChange: vi.fn(),
     });
     expect(document.body.classList.contains("hk-immersive")).toBe(false);
+  });
+});
+
+describe("renderImmersiveLockPrompt / closeImmersiveLockPrompt", () => {
+  it("shows a prompt instead of doing nothing when evidence is blocked", () => {
+    const root = document.createElement("div");
+    renderImmersiveLockPrompt(root, vi.fn());
+    const toast = root.querySelector(".hk-lock-toast");
+    expect(toast?.classList.contains("active")).toBe(true);
+    expect(toast?.textContent).toMatch(/observation only/i);
+  });
+
+  it("calls onSwitchToInspect when its own action button is clicked", () => {
+    const root = document.createElement("div");
+    const onSwitchToInspect = vi.fn();
+    renderImmersiveLockPrompt(root, onSwitchToInspect);
+    root.querySelector<HTMLElement>(".hk-lock-toast-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(onSwitchToInspect).toHaveBeenCalledTimes(1);
+  });
+
+  it("closeImmersiveLockPrompt removes the active class without destroying the toast", () => {
+    const root = document.createElement("div");
+    renderImmersiveLockPrompt(root, vi.fn());
+    closeImmersiveLockPrompt(root);
+    expect(root.querySelector(".hk-lock-toast")?.classList.contains("active")).toBe(false);
+  });
+
+  it("the toast's own close control also dismisses it", () => {
+    const root = document.createElement("div");
+    renderImmersiveLockPrompt(root, vi.fn());
+    root.querySelector<HTMLElement>(".hk-lock-toast .hk-close")?.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(root.querySelector(".hk-lock-toast")?.classList.contains("active")).toBe(false);
   });
 });
 
