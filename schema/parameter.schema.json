@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://human-kernel.example/schema/human-kernel-schema-parameter.json",
+  "$comment": "Placeholder $id host - update once repo/GitHub Pages URL is finalized. Mirrors Spec v0.1 §3.",
+  "title": "Parameter",
+  "type": "object",
+  "required": ["id", "name", "domain", "evidenceIds", "confidence", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["Reality", "Human", "Civilization", "Strategy", "Adaptation", "Legacy"],
+      "description": "Spec v0.1 §1 - proposed ontology, pending Researcher sign-off. Changing this enum without updating Spec §1 first is exactly the kind of silent inconsistency this project exists to prevent."
+    },
+    "evidenceIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" },
+      "minItems": 1,
+      "description": "MACHINE-ENFORCED 'never invent' (Brief v2 §10, principle 1): a Parameter with zero evidence cannot validate against this schema. This is not a style preference, it's the constraint."
+    },
+    "pattern": {
+      "type": "string",
+      "description": "Human-authored label only (Spec v0.1 §5, Pattern Engine v1 does no inference - ADR-0002). Optional."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "DERIVED - arithmetic mean of linked Evidence confidences (Spec v0.1 §5). Never set directly by a user or UI action."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "verified", "disputed"]
+    }
+  }
+}

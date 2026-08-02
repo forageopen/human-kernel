@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Human Kernel — Data-State Wireframes v0.1</title>
+<style>
+:root{
+  --bg:#070b0a; --panel:#101615; --line:#27332f; --text:#e5ebe7; --muted:#87938d;
+  --green:#72d59a; --amber:#d9b65c; --red:#df7272;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; min-height:100vh;
+  background: radial-gradient(circle at top,#192521,#070b0a 70%);
+  color:var(--text); font-family:Inter,"Segoe UI",sans-serif;
+}
+.topbar{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 22px; border-bottom:1px solid var(--line); flex-wrap:wrap; gap:10px;
+}
+.topbar h1{ margin:0; font-size:18px; }
+.topbar .sub{ color:var(--muted); font-size:12px; }
+.switcher button{
+  background:#17221e; border:1px solid var(--line); color:var(--text);
+  padding:7px 12px; border-radius:8px; cursor:pointer; margin-left:6px; font-size:12px;
+}
+.switcher button.active{ border-color:var(--green); color:var(--green); }
+.annotation{
+  margin:14px 22px; padding:12px 16px; border:1px dashed var(--amber);
+  border-radius:8px; color:var(--amber); font-size:12.5px; line-height:1.5;
+  background:rgba(217,182,92,0.06);
+}
+.stage{ display:none; padding:10px 22px 30px; }
+.stage.active{ display:block; }
+.card{
+  background:linear-gradient(145deg,#111716,#0b100f); border:1px solid var(--line);
+  border-radius:14px; padding:18px;
+}
+.grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:6px; }
+.full{ grid-column:1/-1; }
+.label{ font-size:11px; letter-spacing:2px; color:var(--green); margin-bottom:12px; }
+.muted{ color:var(--muted); font-size:12.5px; }
+.center-empty{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-height:340px; gap:14px; text-align:center;
+}
+.center-empty .icon{ font-size:40px; opacity:0.5; }
+button.primary{
+  background:#18231f; border:1px solid var(--green); color:var(--green);
+  padding:10px 18px; border-radius:8px; cursor:pointer; font-size:13px;
+}
+.warn-row{
+  display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid var(--amber);
+  border-radius:8px; background:rgba(217,182,92,0.06); margin-bottom:8px; font-size:12.5px;
+}
+.warn-row .tag{ color:var(--amber); font-weight:600; white-space:nowrap; }
+.progress-row{ display:flex; align-items:center; gap:10px; margin:14px 0; font-size:12.5px; }
+.bar{ flex:1; height:7px; background:#202826; border-radius:20px; }
+.fill{ height:100%; background:var(--green); border-radius:20px; }
+.param-card{ border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; }
+.param-card.disputed{ border-color:var(--red); background:rgba(223,114,114,0.06); }
+.param-title{ display:flex; justify-content:space-between; align-items:center; }
+.status-pill{ font-size:10px; padding:2px 8px; border-radius:12px; border:1px solid var(--line); }
+.status-pill.disputed{ border-color:var(--red); color:var(--red); }
+.status-pill.verified{ border-color:var(--green); color:var(--green); }
+.status-pill.draft{ border-color:var(--muted); color:var(--muted); }
+.conf{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+.evidence-row{
+  display:flex; justify-content:space-between; gap:10px; padding:10px;
+  border-bottom:1px solid var(--line); font-size:12px;
+}
+.evidence-row:last-child{ border-bottom:none; }
+.evidence-row .src{ color:var(--green); }
+.evidence-row .meta{ color:var(--muted); white-space:nowrap; }
+.drawer-mock{
+  border:1px solid var(--green); border-radius:14px; padding:18px; margin-top:16px;
+  background:#0d1211;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Human Kernel — Data-State Wireframes v0.1</h1>
+    <div class="sub">Companion to human-kernel-war-room-draft-5.html — that file validated the Immersive/Inspect interaction model with hardcoded data. This file covers the data states Draft 5 never showed. Same visual language, not a restyle.</div>
+  </div>
+  <div class="switcher">
+    <button class="active" onclick="show(0,this)">1. Empty Vault</button>
+    <button onclick="show(1,this)">2. Partial Parse</button>
+    <button onclick="show(2,this)">3. Populated</button>
+    <button onclick="show(3,this)">4. Disputed</button>
+    <button onclick="show(4,this)">5. Drawer</button>
+  </div>
+</div>
+
+<div class="annotation" id="ann"></div>
+
+<!-- STATE 0: EMPTY VAULT -->
+<div class="stage active" id="s0">
+  <div class="card center-empty">
+    <div class="icon">◌</div>
+    <div><b>No vault connected</b></div>
+    <div class="muted" style="max-width:420px;">Human Kernel reads a local folder of .md files directly in your browser (File System Access API — Chromium-based browsers only, ADR-0003). Nothing is uploaded anywhere.</div>
+    <button class="primary" onclick="alert('Wireframe only — wires to vault-reader module, Sprint 0 Decision Log #4')">Open Vault Folder</button>
+  </div>
+</div>
+
+<!-- STATE 1: PARTIAL PARSE -->
+<div class="stage" id="s1">
+  <div class="card">
+    <div class="label">PARSING VAULT</div>
+    <div class="progress-row">
+      <span>47 / 62 files</span>
+      <div class="bar"><div class="fill" style="width:76%"></div></div>
+      <span>76%</span>
+    </div>
+    <div class="warn-row">
+      <span class="tag">WARNING</span>
+      <span>Unresolved relationship reference in <b>life-notes.md</b>: <code>to:"Burnout Risk"</code> has no matching Parameter. Relationship not created (Spec v0.1 §4 — no match, no fabrication).</span>
+    </div>
+    <div class="warn-row">
+      <span class="tag">WARNING</span>
+      <span><b>career-log.md</b>, block 3: <code>confidence:1.4</code> is out of range [0.0–1.0]. Evidence rejected, not clamped (Spec v0.1 §4).</span>
+    </div>
+    <div class="warn-row" style="border-color:var(--line); color:var(--muted); background:none;">
+      <span class="tag" style="color:var(--muted);">INFO</span>
+      <span>3 Parameters compiled so far across domain: Human (2), Strategy (1).</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATE 2: POPULATED DASHBOARD -->
+<div class="stage" id="s2">
+  <div class="grid">
+    <div class="card">
+      <div class="label">SWOT — DOMAIN: HUMAN</div>
+      <div class="param-card">
+        <div class="param-title"><b>Repeated shipping under pressure</b><span class="status-pill verified">verified</span></div>
+        <div class="conf">Confidence 0.83 — derived from 4 linked Evidence</div>
+      </div>
+      <div class="param-card">
+        <div class="param-title"><b>Avoids conflict in group settings</b><span class="status-pill draft">draft</span></div>
+        <div class="conf">Confidence 0.55 — derived from 2 linked Evidence</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">CAUSAL MAP</div>
+      <div class="muted">Environment → Condition → Pattern → Outcome, rendered from real <code>Relationship</code> objects (relationshipType: causal). Placeholder for actual graph render — Tension C / EPIC-9.</div>
+    </div>
+    <div class="card">
+      <div class="label">TIMELINE</div>
+      <div class="muted">Points plotted from <code>Evidence.timestamp</code>, not manually placed.</div>
+    </div>
+  </div>
+</div>
+
+<!-- STATE 3: DISPUTED -->
+<div class="stage" id="s3">
+  <div class="card full">
+    <div class="label">DOMAIN: STRATEGY</div>
+    <div class="param-card disputed">
+      <div class="param-title"><b>Prefers solo execution over delegation</b><span class="status-pill disputed">disputed</span></div>
+      <div class="conf">Confidence 0.5 — 1 Evidence supports (0.8), 1 Evidence contradicts (0.2, marked status:disputed)</div>
+    </div>
+    <div class="muted" style="margin-top:10px;">Disputed status is not hidden or averaged away silently — Brief v2 §10 principle 2 requires the conflict stay visible until a human resolves it.</div>
+  </div>
+</div>
+
+<!-- STATE 4: DRAWER -->
+<div class="stage" id="s4">
+  <div class="card">
+    <div class="label">SWOT — DOMAIN: HUMAN</div>
+    <div class="param-card">
+      <div class="param-title"><b>Repeated shipping under pressure</b><span class="status-pill verified">verified</span></div>
+      <div class="conf">Confidence 0.83 — 4 linked Evidence. Click to inspect →</div>
+    </div>
+  </div>
+  <div class="drawer-mock">
+    <div class="label" style="color:var(--green);">EVIDENCE — "Repeated shipping under pressure"</div>
+    <div class="evidence-row"><span class="src">q3-retro.md#^a1</span><span>"Shipped the Draft 5 rebuild two days early despite scope cut."</span><span class="meta">conf 0.9 · 2026-07-14</span></div>
+    <div class="evidence-row"><span class="src">launch-notes.md#^c4</span><span>"Chose to ship without the graph view rather than delay."</span><span class="meta">conf 0.8 · 2026-06-02</span></div>
+    <div class="evidence-row"><span class="src">retro-log.md#^f2</span><span>"Missed one deadline this quarter under the same conditions."</span><span class="meta">conf 0.75 · 2026-05-11</span></div>
+    <div class="evidence-row"><span class="src">retro-log.md#^f9</span><span>"Delivered the Cyberjaya cohort brief same-day as requested."</span><span class="meta">conf 0.87 · 2026-04-30</span></div>
+  </div>
+</div>
+
+<script>
+const notes = [
+  "STATE 1 — Empty Vault: first thing a new user sees. No account, no server round-trip — the CTA opens a local folder picker directly.",
+  "STATE 2 — Partial Parse: vault is mid-scan. Compiler warnings surface here in real time (Spec v0.1 §4/§5) — a rejected out-of-range confidence value and an unresolved relationship reference are both shown as visible warnings, never silently dropped.",
+  "STATE 3 — Populated Dashboard: normal operating state. Every number on this screen (confidence, evidence count) is meant to read from a real compiled Parameter object, not a hardcoded percentage like Draft 5 used.",
+  "STATE 4 — Disputed Evidence: what a status:disputed Parameter looks like (Spec v0.1 §5) — conflicting evidence stays visible, not averaged into a false consensus.",
+  "STATE 5 — Evidence Drawer: Inspect-mode drawer showing a real evidence chain for one claim — source file, block ref, confidence, and timestamp per entry. This is the concrete UI expression of Brief v2 §10 principle 2, 'every claim needs a witness.'"
+];
+function show(i, btn){
+  document.querySelectorAll('.stage').forEach((el,idx)=>el.classList.toggle('active', idx===i));
+  document.querySelectorAll('.switcher button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ann').textContent = notes[i];
+}
+show(0, document.querySelector('.switcher button'));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://human-kernel.example/schema/human-kernel-schema-index.json",
+  "$comment": "Root schema for .human-kernel/index.json (Spec v0.1 §2). Placeholder $id host - update once repo/GitHub Pages URL is finalized.",
+  "title": "Human Kernel Index",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "evidence", "parameters", "relationships"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0.1",
+      "description": "Bump on any breaking change to Evidence/Parameter/Relationship shape, with a migration note in a new ADR (Spec v0.1 §6)."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "human-kernel-schema-evidence.json" },
+      "description": "Sorted by id for deterministic serialization (Spec v0.1 §2) - keeps re-parses of an unchanged vault byte-identical, minimizing Git diff noise."
+    },
+    "parameters": {
+      "type": "array",
+      "items": { "$ref": "human-kernel-schema-parameter.json" }
+    },
+    "relationships": {
+      "type": "array",
+      "items": { "$ref": "human-kernel-schema-relationship.json" }
+    }
+  }
+}

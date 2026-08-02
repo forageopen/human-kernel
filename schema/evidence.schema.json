@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://human-kernel.example/schema/human-kernel-schema-evidence.json",
+  "$comment": "Placeholder $id host - update once repo/GitHub Pages URL is finalized (ADR-0001, ADR-0003). Mirrors Spec v0.1 §3.",
+  "title": "Evidence",
+  "type": "object",
+  "required": ["id", "sourceFile", "timestamp", "context", "observation", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sourceFile": {
+      "type": "string",
+      "description": "Relative path within the vault to the source .md file."
+    },
+    "sourceRef": {
+      "type": "string",
+      "description": "Block reference within sourceFile - heading path + callout position. Optional but strongly recommended; without it a claim can't be traced back to an exact block, only a file."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601. Capture time (file mtime by default, or explicit `timestamp:` key in the callout), not event time."
+    },
+    "context": {
+      "type": "string",
+      "description": "Free text - typically the surrounding heading path."
+    },
+    "observation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The actual claim this evidence supports. Empty observation is meaningless evidence, hence minLength 1."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    }
+  }
+}

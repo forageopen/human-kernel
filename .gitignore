@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.human-kernel/
+*.log
+.DS_Store
