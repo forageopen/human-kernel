@@ -196,7 +196,12 @@ describe("wireNotepad", () => {
     execSpy.mockRestore();
   });
 
-  it("clicking the de-select swatch clears the highlight (transparent) and hands text color back to inherit", () => {
+  it("clicking the de-select swatch clears the highlight (transparent) and restores a REAL, concrete text color - not the CSS keyword 'inherit'", () => {
+    // Regression test: execCommand's foreColor does not reliably honor the
+    // CSS keyword "inherit" - live-checking this on the deployed site caught
+    // it baking in a literal rgba(0, 0, 0, 0) (fully transparent, invisible
+    // text) instead of removing the forced color. The fix reads the area's
+    // own computed color and passes that concrete value instead.
     stubExecCommandIfMissing();
     const execSpy = vi.spyOn(document, "execCommand").mockReturnValue(true);
     const { root, area, swatches, formatButtons } = renderNotepad("1");
@@ -207,7 +212,8 @@ describe("wireNotepad", () => {
     const hiliteColorCall = execSpy.mock.calls.find((c) => c[0] === "hiliteColor");
     const foreColorCall = execSpy.mock.calls.find((c) => c[0] === "foreColor");
     expect(hiliteColorCall?.[2]).toBe("transparent");
-    expect(foreColorCall?.[2]).toBe("inherit");
+    expect(foreColorCall?.[2]).not.toBe("inherit");
+    expect(foreColorCall?.[2]).toBe(getComputedStyle(area).color);
     expect(swatches[0]?.classList.contains("active")).toBe(true);
     expect(loadHighlightColor("1")).toBe(NO_HIGHLIGHT_COLOR);
 

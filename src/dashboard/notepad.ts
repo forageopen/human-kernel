@@ -257,11 +257,19 @@ export function wireNotepad(
       area.focus();
       try {
         if (color === NO_HIGHLIGHT_COLOR) {
-          // De-select: transparent removes the highlight background;
-          // "inherit" hands text color back to the area's normal,
-          // theme-aware color instead of leaving it forced dark.
+          // De-select: transparent removes the highlight background. For
+          // text color, execCommand's foreColor does NOT reliably honor the
+          // CSS keyword "inherit" - live-checking this on the deployed site
+          // caught it baking in a literal rgba(0, 0, 0, 0) (fully
+          // transparent, invisible text) instead of removing the forced
+          // color. Passing the area's actual computed color instead - a
+          // concrete rgb() value, which execCommand DOES handle correctly,
+          // same as it already does for HIGHLIGHT_TEXT_COLOR below - and
+          // reading it live means it's correct under whichever of the 3
+          // themes (dark/light/feminine) is currently active, no per-theme
+          // hardcoding needed.
           document.execCommand("hiliteColor", false, "transparent");
-          document.execCommand("foreColor", false, "inherit");
+          document.execCommand("foreColor", false, getComputedStyle(area).color);
         } else {
           document.execCommand("hiliteColor", false, color);
           document.execCommand("foreColor", false, HIGHLIGHT_TEXT_COLOR);
