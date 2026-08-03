@@ -47,6 +47,7 @@
 // for why that split exists).
 import { wireBrowserUI } from "./dashboard/app.js";
 import { startLiveClock } from "./dashboard/clock.js";
+import { wireVisitorCount } from "./dashboard/visitor-count.js";
 import { initParticles } from "./dashboard/particles.js";
 import { initStarChase } from "./dashboard/starchase.js";
 import { initSakura } from "./dashboard/sakura.js";
@@ -87,6 +88,9 @@ if (!root) {
 
 const clockEl = document.getElementById("hk-live-clock");
 if (clockEl) startLiveClock(clockEl);
+
+const visitorCountEl = document.getElementById("hk-visitor-count");
+if (visitorCountEl) wireVisitorCount(visitorCountEl);
 
 const particlesEl = document.getElementById("hk-particles");
 if (particlesEl) initParticles(particlesEl);

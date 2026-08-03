@@ -2,7 +2,21 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02/03 (second through sixteenth passes, spanning v0.1.0-mvd)
+## [Unreleased] - 2026-08-02/03 (second through seventeenth passes, spanning v0.1.0-mvd)
+
+### Added (seventeenth pass - simulated visitor count under the footer date row)
+
+Direct request: "add number of user (visitor) this week? and total user if that applicable. put it under date row." With an explicit instruction attached: try for real data first; if that's not possible, report back before doing anything else.
+
+Investigated before writing any code. Three findings, reported back: (1) `localStorage` - the only persistence this app has - is private per browser, so it structurally cannot see or count other visitors; (2) GitHub's own repo Traffic Insights (checked live) tracks the `github.com` repo page, not the deployed Pages site, showed 0 views/0 unique visitors for this repo, and is admin-only/unembeddable regardless of what it showed; (3) a real number needs a third party in the loop - either a no-signup hit-counter badge (real hits, but low-rigor and someone else's free hobby service) or a proper analytics account (clean numbers, but Adam has to create the account himself - not something done on his behalf). Asked directly which path; answer was to simulate now.
+
+- **New `visitor-count.ts`**: `currentKlWeekKey` (ISO week number computed from the same Asia/Kuala_Lumpur local-date convention every other "today"/"this week" concept in this app already uses); `loadOrCreateVisitorCounts` seeds a plausible baseline on first load and rolls `thisWeek` to a fresh small number whenever the KL week changes, while `total` only ever carries forward or grows; `recordSimulatedVisit` bumps both by a small random step, called once per page load - deliberately not a live background tick, since that would oversell a client-only simulation as the real, backend-requiring option that was just declined. `formatVisitorCountText` renders "N visitors this week · M total (simulated)".
+- **`index.html`/`styles.css`**: a new `.hk-visitor-count` line directly under the existing footer clock (the "date row"), same monospace/Stone Gray footer treatment, slightly muted.
+- **`main.ts`**: wired the same way `clock.ts` is - get the element, call the wire function once, nothing else.
+- The rendered text and the element's `title` both always say "(simulated)" / "no real traffic tracking is wired up yet" - flagged in-product, not just in code comments, matching this codebase's existing habit of never silently presenting placeholder data as real (see the original Time Window/Best-Time-For cards).
+- 14 new tests in `visitor-count.test.ts` covering the week-key math, seed/rollover/carry-forward behavior, per-visit increments and their bounds, exact copy formatting, and the wiring.
+
+362 tests passing (up from 348), typecheck/build clean.
 
 ### Added (sixteenth pass - press-and-hold rapid-cycle on the profile avatar)
 

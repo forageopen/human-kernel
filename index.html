@@ -129,6 +129,11 @@
   <footer class="hk-footer">
     <a href="https://github.com/adamrosmanx" target="_blank" rel="noopener">Adam Rosman</a> for <a href="https://github.com/forageopen" target="_blank" rel="noopener">Forage</a> — see <a href="https://github.com/forageopen/human-kernel#credits" target="_blank" rel="noopener">Credits</a>.
     <div class="hk-clock" id="hk-live-clock"></div>
+    <!-- Simulated, not real traffic (2026-08-03, direct request - see
+         src/dashboard/visitor-count.ts's header comment for why this is
+         simulated rather than real, and why that's flagged rather than
+         hidden). Sits directly under the date row per the request. -->
+    <div class="hk-visitor-count" id="hk-visitor-count"></div>
   </footer>
 
 </div>

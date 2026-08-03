@@ -589,6 +589,10 @@ body {
   margin-top: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--stone);
   font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
 }
+.hk-visitor-count {
+  margin-top: 2px; font-family: var(--font-mono); font-size: 10px; color: var(--stone);
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em; opacity: 0.75;
+}
 
 @keyframes hk-rise-in {
   from { opacity: 0; translate: 0 8px; }
