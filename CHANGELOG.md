@@ -2,7 +2,15 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02/03 (second through tenth passes, spanning v0.1.0-mvd)
+## [Unreleased] - 2026-08-02/03 (second through eleventh passes, spanning v0.1.0-mvd)
+
+### Added (eleventh pass - notepad formatting toolbar, 24-color highlighter, de-select)
+
+Direct request, reference: a screenshot of the Windows Sticky Notes editing toolbar - "adjust all sticky notes to have bold font, italic, underline, strikethrough, then add an option to de-select color, then add highlighter color to 24 (scrollable if cant fit), follow this idea." Applies to all 5 notepad instances at once, since they all share `notepad.ts`.
+
+- **Bold/Italic/Underline/Strikethrough** (`src/dashboard/notepad.ts`'s `FORMAT_COMMANDS`): four buttons above the highlighter row, same icon language as the Sticky Notes reference (each glyph rendered in its own real style - the "B" is actually bold, etc.). Momentary actions on the current selection via `document.execCommand`, same deliberately-simple approach as the existing highlighter - not a persisted preference, since the resulting markup is already captured by the note's own content round-trip. Not in scope: reflecting live cursor state back onto the buttons (Sticky Notes' pressed-button look), which would need `queryCommandState` plus a selection-change listener - a real, separate follow-up, not silently claimed as done here.
+- **De-select highlight color** (`NO_HIGHLIGHT_COLOR` sentinel): a "no color" swatch alongside the palette - the previous design could switch colors but never turn highlighting back off. Clicking it clears the highlight (`hiliteColor` "transparent") and hands text color back to the theme's normal tone (`foreColor` "inherit") instead of leaving it forced dark.
+- **24-color highlighter** (`HIGHLIGHT_COLORS`, `buildHighlightPalette`): grows from 4 hand-picked hex values to 24 systematically-generated pastel hues, same reasoning as `fireworks.ts`'s `paletteForCount` - one shared saturation/lightness so the set reads as one coherent family. The swatch row scrolls horizontally instead of wrapping (direct request: "scrollable if cant fit"), same `overflow-x` pattern already used for the heatmap's week columns.
 
 ### Fixed (theme toggle button label)
 

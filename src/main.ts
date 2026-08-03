@@ -163,9 +163,9 @@ if (canvasEl) {
       defaultVisible: slot === 1,
     });
     widgets.push(notesWidget);
-    const { root: notepadRoot, area, swatches } = renderNotepad(String(slot));
+    const { root: notepadRoot, area, swatches, formatButtons } = renderNotepad(String(slot));
     notesWidget.body.appendChild(notepadRoot);
-    wireNotepad(String(slot), notepadRoot, area, swatches);
+    wireNotepad(String(slot), notepadRoot, area, swatches, formatButtons);
   }
 }
 
