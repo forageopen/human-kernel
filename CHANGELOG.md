@@ -4,6 +4,10 @@ Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keep
 
 ## [Unreleased] - 2026-08-02/03 (second through tenth passes, spanning v0.1.0-mvd)
 
+### Fixed (theme toggle button label)
+
+Direct bug report after the tenth pass shipped: "wrong labelling - feminine supposedly the pink one, light mode supposedly the light color, dark mode also affected." Root cause - `wireThemeToggle` (`src/dashboard/theme.ts`) labeled the button with the NEXT theme in the cycle (what clicking it would switch to), not the one currently on screen. With only two modes this was a minor convention; with a third, visually distinct Feminine palette added, it meant every mode looked "wrong" at once - dark colors on screen while the button read "Light mode," light on screen while it read "Feminine mode," and so on around the cycle. Fixed to label the button with whatever theme is actually active; `index.html`'s static pre-hydration fallback text updated from "Light mode" to "Dark mode" to match the real default.
+
 ### Added (tenth pass - edge-to-edge card canvas, sakura + fireworks layers, a Feminine theme, a second roaming avatar, avatar toggles, a fully-hidden taskbar)
 
 Two direct instructions in sequence. First: remove the card canvas's side margins so cards can be placed anywhere across the full browser width, not just inside the page's centered text column. Second, a six-part request: a sakura (cherry blossom) falling-petal background layer with its own distinct animation; a third theme mode, Feminine (light pink-maroon); a fireworks background layer with a slider controlling how many colors a burst can draw from (1-24); a second roaming avatar - a dog that walks across the screen with a jumping motion; individual on/off toggles for both roaming avatars from the scene taskbar; and making the scene taskbar fully auto-hidden at rest, with no tab visible until hovered or focused.

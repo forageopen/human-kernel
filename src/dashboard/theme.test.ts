@@ -37,19 +37,19 @@ describe("theme", () => {
     expect(toggleTheme()).toBe("dark");
   });
 
-  it("wireThemeToggle applies the stored theme immediately and labels the button with the NEXT mode", () => {
+  it("wireThemeToggle applies the stored theme immediately and labels the button with the CURRENT mode - not the next one, since a button reading 'Light mode' while dark colors are on screen is a bug, not a feature", () => {
     localStorage.setItem("hk-theme", "light");
     const btn = document.createElement("button");
     wireThemeToggle(btn);
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
-    expect(btn.textContent).toBe("Feminine mode");
+    expect(btn.textContent).toBe("Light mode");
 
     btn.dispatchEvent(new Event("click", { bubbles: true }));
     expect(document.documentElement.getAttribute("data-theme")).toBe("feminine");
-    expect(btn.textContent).toBe("Dark mode");
+    expect(btn.textContent).toBe("Feminine mode");
 
     btn.dispatchEvent(new Event("click", { bubbles: true }));
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
-    expect(btn.textContent).toBe("Light mode");
+    expect(btn.textContent).toBe("Dark mode");
   });
 });

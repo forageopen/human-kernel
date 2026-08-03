@@ -52,7 +52,10 @@
 
   <div class="hk-ribbon">
     <span class="hk-ribbon-brand">Human Kernel</span>
-    <button class="hk-theme-toggle" id="hk-theme-toggle" type="button">Light mode</button>
+    <!-- Static fallback text only - theme.ts's wireThemeToggle overwrites this
+         on load with whichever mode is actually active (default: dark), so
+         the label always names what's on screen, not what a click leads to. -->
+    <button class="hk-theme-toggle" id="hk-theme-toggle" type="button">Dark mode</button>
   </div>
 
   <!-- GitHub-profile-style header (direct reference: uploaded screenshot of a

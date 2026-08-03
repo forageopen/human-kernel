@@ -63,12 +63,18 @@ export function toggleTheme(): Theme {
   return next;
 }
 
-/** Applies the stored theme immediately, labels the button with the NEXT
- * mode in the cycle (what clicking it will switch to - matches how the
- * original two-mode toggle was labeled), and advances one step on click. */
+/** Applies the stored theme immediately and labels the button with the mode
+ * CURRENTLY active - not the one clicking it leads to. (Direct correction:
+ * the original two-mode toggle showed the NEXT mode, e.g. "Light mode" while
+ * dark was on screen; with a third, visually distinct Feminine palette added,
+ * that label-vs-colors mismatch read as every mode being "wrong" - dark on
+ * screen labeled "Light mode", light on screen labeled "Feminine mode", and
+ * so on around the cycle. The button now always names what you're looking
+ * at.) Advances one step through the cycle on click, then re-labels for the
+ * theme that click just applied. */
 export function wireThemeToggle(button: HTMLElement): void {
   const render = (theme: Theme): void => {
-    button.textContent = LABELS[nextInCycle(theme)];
+    button.textContent = LABELS[theme];
   };
   render(initTheme());
   button.addEventListener("click", () => render(toggleTheme()));
