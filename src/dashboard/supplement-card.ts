@@ -21,10 +21,17 @@ export function renderSupplementCard(): SupplementCardElements {
   const root = document.createElement("div");
   root.className = "hk-supplement-card";
 
+  // Labeled "Remind me at" rather than a bare "Time" (2026-08-03, direct
+  // feedback: "mechanism okay, just the wording is not clear") - setting a
+  // time here is what arms the reminder, and the old generic "Time" label
+  // didn't say that. The checkbox below is what silences it (see
+  // wireSupplementCard/isReminderDue): ticked = no reminder, unticked +
+  // time reached = reminder fires. Mechanism unchanged, label now says why
+  // it exists.
   const timeRow = document.createElement("label");
   timeRow.className = "hk-supplement-time-row";
   const timeLabelText = document.createElement("span");
-  timeLabelText.textContent = "Time";
+  timeLabelText.textContent = "Remind me at";
   const timeInput = document.createElement("input");
   timeInput.type = "time";
   timeInput.className = "hk-supplement-time-input";

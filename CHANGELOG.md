@@ -2,7 +2,14 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02/03 (second through thirteenth passes, spanning v0.1.0-mvd)
+## [Unreleased] - 2026-08-02/03 (second through fourteenth passes, spanning v0.1.0-mvd)
+
+### Fixed (fourteenth pass - tab 2 theme, reminder-field wording)
+
+Direct feedback after the thirteenth pass shipped, two items:
+
+- **Tab 2 now follows the theme toggle** (`styles.css`'s `.hk-tab2-panel`): the previous pass hardcoded it to black regardless of the dark/light/feminine cycle, reasoned at the time as a deliberate third visual mode independent of `data-theme`. Direct feedback: "supplement tab got no feminine, light & dark mode." That reasoning is retired - the panel no longer overrides any themed CSS variable, so it now reads `var(--bg)` like everything else and switches with the rest of the app. Under the default dark theme this still looks near-black, which is what the original "black background" request meant in practice - it just isn't locked there anymore.
+- **Reminder field relabeled** (`supplement-card.ts`): "Time" → "Remind me at". Direct feedback confirmed the taken/reminder mechanism itself is correct (ticked "Taken today" silences the reminder, unticked lets it fire once the time passes) but the wording didn't make the connection between setting a time and arming a reminder obvious. Label changed, mechanism untouched.
 
 ### Added (thirteenth pass - second product tab: Cognitive Supplement Dashboard, Phase 0 only)
 

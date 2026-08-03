@@ -856,35 +856,19 @@ body {
 .hk-tab-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
 .hk-tab-btn.active { background: var(--bg); color: var(--accent-text); }
 
-/* Deliberate THIRD visual mode, independent of the dark/light/feminine
-   theme cycle above - both tabs share <html>'s one data-theme attribute, so
-   tab 2's black look can't be carried by data-theme without also changing
-   tab 1's. Instead, every themed CSS variable is re-declared here, scoped
-   to this subtree via ordinary custom-property cascade - every reused
-   component inside (createWidget's .hk-widget chrome, .hk-scene-panel, the
-   supplement card below) automatically inherits these values with zero
-   changes of its own, the same way [data-theme="light"] above overrides
-   the root defaults for everything under <html>, just scoped to one
-   element instead. Hardcoded dark-tier values (not var(--bg)/
-   var(--accent-text)) on purpose: this surface is ALWAYS dark, so per the
-   brand guideline (Ember Gold is dark-surface-only) it always gets the
-   real dark-tier accent, never the light-theme Sage swap var(--accent-text)
-   would apply if tab 1 happened to be in light mode. color-scheme: dark is
-   set for the same reason - so native controls (the time input's picker
-   icon, the checkbox) render legibly against black regardless of the
-   visitor's chosen theme. */
+/* Corrected 2026-08-03 (direct feedback: "supplement tab got no feminine,
+   light & dark mode") - the previous pass forced this panel to a hardcoded
+   black regardless of the theme toggle, reasoning it as a deliberate third
+   visual mode. That reasoning is retired: tab 2 now follows the SAME
+   data-theme cycle as tab 1 (dark/light/feminine) by simply not overriding
+   any themed variable - var(--bg)/var(--card)/var(--accent-text)/etc. all
+   fall through to whatever [data-theme] currently has them set to at
+   <html>. Under the default dark theme this still reads as a near-black
+   surface (Deep Charcoal, --bg's dark value), which is what "black
+   background" meant in the original request - it just isn't locked there
+   anymore once the visitor switches modes. */
 .hk-tab2-panel {
-  --bg: #0e0e0d;              /* Forage Black */
-  --card: #1c1c1a;            /* Deep Charcoal */
-  --card-alt: #262624;        /* Near Black */
-  --text: rgba(237, 233, 224, 0.88);
-  --text-strong: #ede9e0;
-  --accent-text: #c8a96e;     /* Ember Gold, hardcoded - see comment above */
-  --border-hint: rgba(200, 169, 110, 0.12);
-  --state-hover: rgba(200, 169, 110, 0.08);
-  --state-focus: rgba(200, 169, 110, 0.12);
-  --state-press: rgba(200, 169, 110, 0.16);
-  background: var(--bg); color-scheme: dark;
+  background: var(--bg);
   min-height: 100vh;
 }
 .hk-tab2-canvas { min-height: 600px; }
