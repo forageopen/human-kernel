@@ -2,7 +2,19 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02 (second through eighth passes, same day as v0.1.0-mvd)
+## [Unreleased] - 2026-08-02/03 (second through tenth passes, spanning v0.1.0-mvd)
+
+### Added (tenth pass - edge-to-edge card canvas, sakura + fireworks layers, a Feminine theme, a second roaming avatar, avatar toggles, a fully-hidden taskbar)
+
+Two direct instructions in sequence. First: remove the card canvas's side margins so cards can be placed anywhere across the full browser width, not just inside the page's centered text column. Second, a six-part request: a sakura (cherry blossom) falling-petal background layer with its own distinct animation; a third theme mode, Feminine (light pink-maroon); a fireworks background layer with a slider controlling how many colors a burst can draw from (1-24); a second roaming avatar - a dog that walks across the screen with a jumping motion; individual on/off toggles for both roaming avatars from the scene taskbar; and making the scene taskbar fully auto-hidden at rest, with no tab visible until hovered or focused.
+
+- **Edge-to-edge card canvas** (`index.html`): `.hk-canvas` moved out of `.hk-shell` entirely, now a direct child of `<body>` spanning the full viewport width. `.hk-shell`'s centered column and side gutters were built for page text, not the card scene - the canvas keeping its own width let `draggable.ts`'s drag-bound math (`canvas.clientWidth`) give cards the whole browser width to move in. A small comfort padding is restored on mobile only, where drag doesn't apply.
+- **`src/dashboard/sakura.ts`** (new) - a third ambient background layer: falling cherry-blossom petals, each with its own randomized fall duration, side-to-side sway, rotation, size, and hue variance, sharing the same `--hk-speed` variable as the particle field and star-chase so one slider still controls all three.
+- **Feminine theme** (`src/dashboard/theme.ts` rewritten for a 3-way cycle: dark -> light -> feminine -> dark; `styles.css`): a light pink/maroon palette, added alongside the two locked Forage tiers (Dark x Ember Gold, Light x Sage) at direct request. Explicitly flagged in code as a personal exception outside the official brand system, same treatment as the mascot's purple - never presented as Forage brand identity.
+- **`src/dashboard/fireworks.ts`** (new) - a fourth background layer: periodic radiating bursts, timer-driven rather than a looping CSS keyframe (a burst has to actually appear and disappear). A scene-taskbar slider controls how many hues (1-24) the next burst can draw from - a genuine JS-level choice, not a CSS variable, so it's wired through its own callback rather than the shared speed slider.
+- **`src/dashboard/dog-avatar.ts`** (new) - a second roaming avatar: an autonomous dog, same pixel-grid SVG technique as the profile avatar and mascot, that walks across the full viewport width and back, flipping to face its direction of travel, with a continuous hop layered on top via a nested element. Unlike the mascot, it isn't draggable - it just moves on its own.
+- **Avatar show/hide toggles** (`main.ts`): both the mascot and the new dog now get their own entry and switch in the scene taskbar, reusing the exact same `loadVisible`/`saveVisible` + `.hk-widget-hidden` mechanism every card's close button already used, applied directly to their container elements instead of through `createWidget`.
+- **Scene taskbar fully auto-hidden** (`styles.css`): the resting sliver was a visible 34px labeled tab; it's now a fully transparent ~6px hover zone at the screen edge, with the tab's chrome only appearing once the panel is actually open (hover, focus, or click) - still keyboard-reachable via `:focus-within`.
 
 ### Added (eighth pass - generic show/hide chrome, a real calendar, two new Layer-3 cards, a scene taskbar, a second background layer, and a mascot)
 

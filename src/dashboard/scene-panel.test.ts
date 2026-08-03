@@ -1,6 +1,15 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach } from "vitest";
-import { loadSpeed, saveSpeed, applySpeed, renderScenePanel, wireScenePanel, type SceneCardEntry } from "./scene-panel.js";
+import {
+  loadSpeed,
+  saveSpeed,
+  applySpeed,
+  loadFireworkColorCount,
+  saveFireworkColorCount,
+  renderScenePanel,
+  wireScenePanel,
+  type SceneCardEntry,
+} from "./scene-panel.js";
 
 function makeEntry(id: string, label: string, initiallyVisible = true): SceneCardEntry & { _visible: boolean } {
   const entry = {
@@ -44,16 +53,41 @@ describe("applySpeed", () => {
   });
 });
 
+describe("loadFireworkColorCount / saveFireworkColorCount", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("defaults to 8 when nothing is stored", () => {
+    expect(loadFireworkColorCount()).toBe(8);
+  });
+
+  it("round-trips a saved count", () => {
+    saveFireworkColorCount(16);
+    expect(loadFireworkColorCount()).toBe(16);
+  });
+
+  it("falls back to the default for out-of-range or garbage stored values", () => {
+    localStorage.setItem("hk-scene-firework-colors", "0");
+    expect(loadFireworkColorCount()).toBe(8);
+    localStorage.setItem("hk-scene-firework-colors", "30");
+    expect(loadFireworkColorCount()).toBe(8);
+    localStorage.setItem("hk-scene-firework-colors", "not-a-number");
+    expect(loadFireworkColorCount()).toBe(8);
+  });
+});
+
 describe("renderScenePanel", () => {
-  it("builds one toggle row per card entry, plus a speed slider and an edge tab", () => {
+  it("builds one toggle row per card entry, plus both sliders and an edge tab", () => {
     const entries = [makeEntry("heatmap", "Activity"), makeEntry("prayer", "Prayer Times")];
-    const { root, tab, toggleInputs, speedSlider } = renderScenePanel(entries);
+    const { root, tab, toggleInputs, speedSlider, fireworkSlider } = renderScenePanel(entries);
 
     expect(root.classList.contains("hk-scene-panel")).toBe(true);
     expect(tab.tagName).toBe("BUTTON");
     expect(toggleInputs.size).toBe(2);
     expect(root.querySelectorAll(".hk-scene-card-row").length).toBe(2);
     expect(speedSlider.type).toBe("range");
+    expect(fireworkSlider.type).toBe("range");
+    expect(fireworkSlider.min).toBe("1");
+    expect(fireworkSlider.max).toBe("24");
     expect(root.textContent).toContain("Activity");
     expect(root.textContent).toContain("Prayer Times");
   });
@@ -127,5 +161,37 @@ describe("wireScenePanel", () => {
 
     expect(document.documentElement.style.getPropertyValue("--hk-speed")).toBe("0.5");
     expect(loadSpeed()).toBe(0.5);
+  });
+
+  it("restores a persisted firework color count onto its slider and reports it once via the callback", () => {
+    saveFireworkColorCount(16);
+    const entries: SceneCardEntry[] = [];
+    const { root, tab, toggleInputs, speedSlider, fireworkSlider } = renderScenePanel(entries);
+    let reported: number | undefined;
+    wireScenePanel(root, tab, toggleInputs, speedSlider, entries, fireworkSlider, (n) => {
+      reported = n;
+    });
+
+    expect(fireworkSlider.value).toBe("16");
+    expect(reported).toBe(16);
+  });
+
+  it("moving the firework slider persists the new count and reports it via the callback", () => {
+    const entries: SceneCardEntry[] = [];
+    const { root, tab, toggleInputs, speedSlider, fireworkSlider } = renderScenePanel(entries);
+    const reports: number[] = [];
+    wireScenePanel(root, tab, toggleInputs, speedSlider, entries, fireworkSlider, (n) => reports.push(n));
+
+    fireworkSlider.value = "3";
+    fireworkSlider.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(loadFireworkColorCount()).toBe(3);
+    expect(reports).toContain(3);
+  });
+
+  it("works without a firework slider/callback at all - the parameters are optional", () => {
+    const entries: SceneCardEntry[] = [];
+    const { root, tab, toggleInputs, speedSlider } = renderScenePanel(entries);
+    expect(() => wireScenePanel(root, tab, toggleInputs, speedSlider, entries)).not.toThrow();
   });
 });

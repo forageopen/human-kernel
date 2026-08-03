@@ -17,14 +17,20 @@
 </head>
 <body>
 
-<!-- Two independent ambient background layers (page chrome, not dashboard
+<!-- Four independent ambient background layers (page chrome, not dashboard
      data) - fixed, behind everything, pointer-events disabled. Populated by
-     main.ts via src/dashboard/particles.ts (slow drifting dots) and
+     main.ts via src/dashboard/particles.ts (slow drifting dots),
      src/dashboard/starchase.ts (two fast groups chasing on opposite
-     diagonals). Both hidden under prefers-reduced-motion (see styles.css);
-     both share one speed control (the scene taskbar's slider, --hk-speed). -->
+     diagonals), src/dashboard/sakura.ts (falling cherry-blossom petals),
+     and src/dashboard/fireworks.ts (periodic radiating bursts). All four
+     hidden/stopped under prefers-reduced-motion (see styles.css); the first
+     three share one speed control (the scene taskbar's slider, --hk-speed) -
+     fireworks' burst pacing is its own timer, not tied to that slider, and
+     its color-variety slider lives in the scene taskbar too. -->
 <div class="hk-particles" id="hk-particles" aria-hidden="true"></div>
 <div class="hk-starchase" id="hk-starchase" aria-hidden="true"></div>
+<div class="hk-sakura" id="hk-sakura" aria-hidden="true"></div>
+<div class="hk-fireworks" id="hk-fireworks" aria-hidden="true"></div>
 
 <!-- Auto-hide left scene taskbar - built and mounted entirely by
      src/dashboard/scene-panel.ts, since its whole contents (the card list)
@@ -35,6 +41,12 @@
      release to have it fall like a leaf to a resting spot near the bottom
      of the viewport; that spot is remembered for next visit. -->
 <div class="hk-mascot" id="hk-mascot" role="img" aria-label="A small purple mascot - drag it around"></div>
+
+<!-- Second roaming avatar: a dog that walks across the screen on its own
+     (src/dashboard/dog-avatar.ts) - autonomous, not draggable. Both this and
+     the mascot above get an individual show/hide switch in the scene
+     taskbar (main.ts), same mechanism as every card. -->
+<div class="hk-dog" id="hk-dog" aria-hidden="true"></div>
 
 <div class="hk-shell">
 

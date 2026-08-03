@@ -99,9 +99,32 @@
   --state-press: rgba(122, 140, 110, 0.18);
 }
 
+/* Feminine - light pink x maroon (2026-08-02, direct request: "New theme
+   mode: Feminine - (light pink-maroon)"). NOT part of the locked Forage
+   brand guideline (FDMAI-BRAND-001 defines exactly two tiers: Deep Minds
+   dark x Ember Gold, Open light x Sage) - this is a deliberate,
+   explicitly-flagged personalization option for Adam's own dashboard, same
+   category as the mascot's purple (mascot.ts): a one-off outside the locked
+   palette, added because it was directly requested, never presented as
+   official Forage identity. --stone/--ember/--crimson stay the same
+   literal values as the other two themes (same pattern the Light theme
+   already uses) rather than inventing per-theme variants of those too. */
+:root[data-theme="feminine"] {
+  --bg: #fdf1f5;              /* soft light pink */
+  --card: #ffffff;
+  --card-alt: #fbe0ea;        /* deeper pink-tinted nested surface */
+  --text: rgba(74, 20, 35, 0.82);
+  --text-strong: #4a1423;     /* deep maroon */
+  --accent-text: #a23855;     /* rose-maroon accent - headings/links/CTAs */
+  --border-hint: rgba(162, 56, 85, 0.18);
+  --state-hover: rgba(162, 56, 85, 0.08);
+  --state-focus: rgba(162, 56, 85, 0.14);
+  --state-press: rgba(162, 56, 85, 0.18);
+}
+
 * { box-sizing: border-box; }
 html { color-scheme: dark; }
-html[data-theme="light"] { color-scheme: light; }
+html[data-theme="light"], html[data-theme="feminine"] { color-scheme: light; }
 body {
   margin: 0; min-height: 100vh;
   background: var(--bg);
@@ -564,6 +587,60 @@ body {
   100% { transform: rotate(var(--hk-s-angle)) translateX(var(--hk-s-distance)); opacity: 0; }
 }
 
+/* ---------- Sakura (third background layer, 2026-08-02, direct request:
+   "new background animation sakura flower with its own animation"). Its
+   "own" motion, distinct from the other two layers: petals fall top to
+   bottom with a side-to-side sway and a slow full rotation, rather than
+   drifting in place (particles) or shooting in a straight diagonal
+   (starchase). Shares --hk-speed with both. */
+.hk-sakura { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.hk-sakura-petal {
+  position: absolute; top: -20px;
+  left: var(--hk-sk-left);
+  width: var(--hk-sk-size); height: calc(var(--hk-sk-size) * 0.75);
+  border-radius: 60% 60% 60% 5%;
+  background: hsl(340deg 75% 84%);
+  filter: hue-rotate(var(--hk-sk-hue));
+  box-shadow: 0 0 4px rgba(190, 90, 130, 0.35);
+  animation: hk-sakura-fall calc(var(--hk-sk-fall-base) * 1s / var(--hk-speed, 1)) linear var(--hk-sk-delay) infinite;
+}
+@keyframes hk-sakura-fall {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: 0.9; }
+  25%  { transform: translate(var(--hk-sk-sway), 27vh) rotate(90deg); }
+  50%  { transform: translate(0, 54vh) rotate(180deg); }
+  75%  { transform: translate(calc(var(--hk-sk-sway) * -1), 81vh) rotate(270deg); }
+  92%  { opacity: 0.9; }
+  100% { transform: translate(0, 112vh) rotate(360deg); opacity: 0; }
+}
+
+/* ---------- Fireworks (fourth background layer, 2026-08-02, direct
+   request: "fireworks background animation, with how many colors slider
+   (1-24 variations)"). Unlike the other three ambient layers, a burst is a
+   one-shot event, not an infinite loop - fireworks.ts's spawnBurst() builds
+   each burst's DOM fresh, this animation plays once (no `infinite`), and a
+   matching setTimeout in fireworks.ts removes the element once it's done.
+   Each spark is rotated once to its travel angle, then translateX moves it
+   outward along that rotated axis - same trick as starchase.ts. Doesn't
+   share --hk-speed - burst pacing is a timer concern in fireworks.ts, not
+   an animation-duration one. */
+.hk-fireworks { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.hk-firework-burst { position: absolute; left: var(--hk-fw-left); top: var(--hk-fw-top); width: 0; height: 0; }
+.hk-firework-spark {
+  position: absolute; left: 0; top: 0;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--hk-fw-color);
+  box-shadow: 0 0 6px 1px var(--hk-fw-color);
+  transform: rotate(var(--hk-fw-angle));
+  transform-origin: 0 0;
+  animation: hk-firework-spark 1.1s ease-out both;
+}
+@keyframes hk-firework-spark {
+  0%   { transform: rotate(var(--hk-fw-angle)) translateX(0); opacity: 1; }
+  70%  { opacity: 0.9; }
+  100% { transform: rotate(var(--hk-fw-angle)) translateX(var(--hk-fw-distance)); opacity: 0; }
+}
+
 /* ---------- Mascot (purple 8-bit "cousin" character, 2026-08-02, direct
    request: "avatars similar like a claude code... 8-bit style... treat it
    like a cousin of the claude code avatar"). Roams the whole viewport
@@ -587,22 +664,65 @@ body {
   100% { transform: translate(0, var(--hk-mascot-fall-distance)) rotate(0deg); }
 }
 
+/* ---------- Dog avatar (second roaming character, 2026-08-02, direct
+   request: "add a new avatar, a dog moving across screen with jumping
+   action"). Two nested animations on two elements, since one element's
+   `transform` can't cleanly combine two independently-timed motions: the
+   outer .hk-dog crosses the viewport and flips to face its direction of
+   travel; the inner .hk-dog-hop bounces continuously the whole time - the
+   "jumping action." Autonomous - no pointer events, not draggable, unlike
+   the mascot. */
+.hk-dog {
+  position: fixed; bottom: 18px; left: 0; width: 56px; height: 40px; z-index: 55;
+  pointer-events: none;
+  animation: hk-dog-cross 16s linear infinite;
+}
+.hk-dog svg { display: block; width: 100%; height: 100%; }
+.hk-dog-hop { animation: hk-dog-hop 0.5s ease-in-out infinite; }
+@keyframes hk-dog-cross {
+  0%   { transform: translateX(-70px) scaleX(1); }
+  48%  { transform: translateX(calc(100vw + 10px)) scaleX(1); }
+  50%  { transform: translateX(calc(100vw + 10px)) scaleX(-1); }
+  98%  { transform: translateX(-70px) scaleX(-1); }
+  100% { transform: translateX(-70px) scaleX(1); }
+}
+@keyframes hk-dog-hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
 /* ---------- Scene taskbar (auto-hide left panel, 2026-08-02, direct
    request: "auto-hide taskbar on the left... enable *again after close) &
    or disable each cards from the scene"). Pure-CSS auto-hide via :hover /
    :focus-within, plus a .open class (toggled by clicking the tab) so
-   touch/keyboard users - who have no hover state - can reach it too. ---- */
+   touch/keyboard users - who have no hover state - can reach it too.
+
+   Fully auto-hidden at rest (2026-08-02, direct follow-up request: "adjust
+   left taskbar to be fully auto-hidden") - the resting sliver used to be a
+   visible 34px labeled tab; it's now a fully transparent ~6px hover zone
+   flush with the screen edge, with nothing rendered until the panel is
+   actually entered/focused/opened, at which point the tab widens and its
+   chrome fades in together with the panel sliding into view. The tab stays
+   a real, focusable <button> throughout, so :focus-within still reaches it
+   for keyboard users even though it's visually invisible at rest. ---- */
 .hk-scene-panel {
   position: fixed; top: 0; left: 0; height: 100vh; z-index: 70;
   display: flex; align-items: stretch;
-  transform: translateX(calc(-100% + 34px));
+  transform: translateX(calc(-100% + 6px));
   transition: transform var(--duration-medium) var(--ease-emphasized-decel);
 }
 .hk-scene-panel:hover, .hk-scene-panel:focus-within, .hk-scene-panel.open { transform: translateX(0); }
 .hk-scene-tab {
-  width: 34px; flex-shrink: 0; background: var(--card); border: none;
-  border-right: 1px solid var(--border-hint); color: var(--stone); cursor: pointer;
-  font-size: 15px; writing-mode: vertical-rl;
+  width: 6px; flex-shrink: 0; background: transparent; border: none;
+  color: transparent; cursor: pointer; font-size: 15px; writing-mode: vertical-rl;
+  transition: width var(--duration-short) var(--ease-standard),
+              background-color var(--duration-short) var(--ease-standard),
+              color var(--duration-short) var(--ease-standard);
+}
+.hk-scene-panel:hover .hk-scene-tab,
+.hk-scene-panel:focus-within .hk-scene-tab,
+.hk-scene-panel.open .hk-scene-tab {
+  width: 34px; background: var(--card); color: var(--stone); border-right: 1px solid var(--border-hint);
 }
 .hk-scene-tab:hover { color: var(--accent-text); }
 .hk-scene-tab:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent-text); }
@@ -629,8 +749,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   :root { --duration-short: 0.01ms; --duration-medium: 0.01ms; }
   .hk-widget, .hk-drawer.active, .hk-lock-toast.active { animation: none; }
-  .hk-particles, .hk-starchase { display: none; }
+  .hk-particles, .hk-starchase, .hk-sakura, .hk-fireworks { display: none; }
   .hk-mascot-falling { animation: none; }
+  .hk-dog, .hk-dog-hop { animation: none; }
 }
 
 @media (max-width: 720px) {
@@ -644,4 +765,5 @@ body {
   .hk-drawer { right: 12px; left: 12px; bottom: 12px; width: auto; max-width: none; }
   .hk-scene-panel-inner { width: 200px; }
   .hk-mascot { width: 48px; height: 48px; }
+  .hk-dog { width: 40px; height: 30px; bottom: 12px; }
 }
