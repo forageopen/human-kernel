@@ -1,6 +1,16 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach } from "vitest";
-import { loadRect, saveRect, applyStoredRect, makeDraggable, loadVisible, saveVisible, createWidget } from "./draggable.js";
+import {
+  loadRect,
+  saveRect,
+  applyStoredRect,
+  makeDraggable,
+  loadVisible,
+  saveVisible,
+  loadTitle,
+  saveTitle,
+  createWidget,
+} from "./draggable.js";
 
 describe("loadRect / saveRect", () => {
   beforeEach(() => localStorage.clear());
@@ -85,6 +95,24 @@ describe("loadVisible / saveVisible", () => {
   });
 });
 
+describe("loadTitle / saveTitle", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("falls back to the given default when nothing has been saved", () => {
+    expect(loadTitle("note-1", "Notes")).toBe("Notes");
+  });
+
+  it("round-trips a saved title", () => {
+    saveTitle("note-1", "Grocery list");
+    expect(loadTitle("note-1", "Notes")).toBe("Grocery list");
+  });
+
+  it("falls back to the default for a blank saved title, never returning empty", () => {
+    saveTitle("note-1", "   ");
+    expect(loadTitle("note-1", "Notes")).toBe("Notes");
+  });
+});
+
 describe("createWidget", () => {
   beforeEach(() => localStorage.clear());
 
@@ -143,6 +171,103 @@ describe("createWidget", () => {
       bubbledToHandle = true;
     });
     w.root.querySelector<HTMLElement>(".hk-widget-close")?.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    expect(bubbledToHandle).toBe(false);
+  });
+
+  it("getTitle() matches title, and neither changes, when editableTitle is not enabled", () => {
+    const canvas = document.createElement("div");
+    document.body.appendChild(canvas);
+    const w = createWidget(canvas, "card-f", "Fixed Title", { defaultRect: { left: 0, top: 0, width: 200, height: 150 } });
+    expect(w.title).toBe("Fixed Title");
+    expect(w.getTitle()).toBe("Fixed Title");
+    expect(w.root.querySelector(".hk-label")?.getAttribute("contenteditable")).not.toBe("true");
+  });
+
+  it("editableTitle: restores a previously-saved custom title instead of the passed-in default", () => {
+    saveTitle("card-g", "My renamed card");
+    const canvas = document.createElement("div");
+    document.body.appendChild(canvas);
+    const w = createWidget(canvas, "card-g", "Notes", {
+      defaultRect: { left: 0, top: 0, width: 200, height: 150 },
+      editableTitle: true,
+    });
+    expect(w.title).toBe("My renamed card");
+    expect(w.getTitle()).toBe("My renamed card");
+  });
+
+  it("editableTitle: clicking the label, editing it, and blurring commits and persists the new title", () => {
+    const canvas = document.createElement("div");
+    document.body.appendChild(canvas);
+    const w = createWidget(canvas, "card-h", "Notes", {
+      defaultRect: { left: 0, top: 0, width: 200, height: 150 },
+      editableTitle: true,
+    });
+    const label = w.root.querySelector<HTMLElement>(".hk-label")!;
+
+    label.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(label.contentEditable).toBe("true");
+
+    label.textContent = "Grocery list";
+    label.dispatchEvent(new Event("blur"));
+
+    expect(label.contentEditable).toBe("false");
+    expect(label.textContent).toBe("Grocery list");
+    expect(w.getTitle()).toBe("Grocery list");
+    expect(loadTitle("card-h", "Notes")).toBe("Grocery list");
+  });
+
+  it("editableTitle: Enter commits, Escape cancels back to the last committed title", () => {
+    const canvas = document.createElement("div");
+    document.body.appendChild(canvas);
+    const w = createWidget(canvas, "card-i", "Notes", {
+      defaultRect: { left: 0, top: 0, width: 200, height: 150 },
+      editableTitle: true,
+    });
+    const label = w.root.querySelector<HTMLElement>(".hk-label")!;
+
+    label.dispatchEvent(new Event("click", { bubbles: true }));
+    label.textContent = "First rename";
+    label.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    expect(w.getTitle()).toBe("First rename");
+
+    label.dispatchEvent(new Event("click", { bubbles: true }));
+    label.textContent = "Abandoned edit";
+    label.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(w.getTitle()).toBe("First rename");
+    expect(label.textContent).toBe("First rename");
+  });
+
+  it("editableTitle: clearing the title entirely falls back to the original default rather than saving blank", () => {
+    const canvas = document.createElement("div");
+    document.body.appendChild(canvas);
+    const w = createWidget(canvas, "card-j", "Notes 3", {
+      defaultRect: { left: 0, top: 0, width: 200, height: 150 },
+      editableTitle: true,
+    });
+    const label = w.root.querySelector<HTMLElement>(".hk-label")!;
+
+    label.dispatchEvent(new Event("click", { bubbles: true }));
+    label.textContent = "   ";
+    label.dispatchEvent(new Event("blur"));
+
+    expect(w.getTitle()).toBe("Notes 3");
+    expect(label.textContent).toBe("Notes 3");
+  });
+
+  it("editableTitle: a pointerdown on the label does not bubble into the drag handle", () => {
+    const canvas = document.createElement("div");
+    document.body.appendChild(canvas);
+    const w = createWidget(canvas, "card-k", "Notes", {
+      defaultRect: { left: 0, top: 0, width: 200, height: 150 },
+      editableTitle: true,
+    });
+    const handle = w.root.querySelector<HTMLElement>(".hk-widget-handle")!;
+    const label = w.root.querySelector<HTMLElement>(".hk-label")!;
+    let bubbledToHandle = false;
+    handle.addEventListener("pointerdown", () => {
+      bubbledToHandle = true;
+    });
+    label.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     expect(bubbledToHandle).toBe(false);
   });
 });

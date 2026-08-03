@@ -1,26 +1,31 @@
 // Browser entry point. Loaded by index.html as a module script.
 //
-// 2026-08-02, current pass: every card on the canvas - including all 5
-// independent Notes slots and the two new Layer-3 cards (Cognitive
-// Currents, Unplanned Activity Check) - is now created dynamically through
-// draggable.ts's createWidget, rather than looking up static per-widget
-// markup in index.html. That gives every card the same chrome for free
-// (drag, native resize, a close button, and a visibility state the scene
-// taskbar can also flip) with no per-card boilerplate. A purple mascot
-// (mascot.ts) and a second, autonomous dog avatar (dog-avatar.ts) roam the
-// page; two more background layers (sakura.ts, fireworks.ts) join the
-// original particle field and star-chase; and the left-edge scene taskbar
-// (scene-panel.ts) lists every card AND both avatars, plus a shared
-// background-motion speed slider and a firework color-count slider.
+// 2026-08-02 pass: every card on the canvas - including all 5 independent
+// Notes slots and the two Layer-3 cards (Cognitive Currents, Unplanned
+// Activity Check) - is created dynamically through draggable.ts's
+// createWidget, rather than looking up static per-widget markup in
+// index.html. That gives every card the same chrome for free (drag, native
+// resize, a close button, and a visibility state the scene taskbar can also
+// flip) with no per-card boilerplate. A purple mascot (mascot.ts) and a
+// second, autonomous dog avatar (dog-avatar.ts) roam the page; four
+// background layers (particles.ts "fireflies", starchase.ts "lasers",
+// sakura.ts, fireworks.ts) each get their own on/off toggle in the scene
+// taskbar so they're never all four on together for a first-time visitor.
+//
+// 2026-08-03 pass: the scene taskbar (scene-panel.ts) also supports drag-to-
+// reorder on its card/avatar list, and carries a quote widget (quote-
+// widget.ts) in its footer slot. The 5 Notes widgets opt into
+// createWidget's editableTitle option (click-to-rename). The page header
+// name/title (profile-name.ts) is click-to-edit rather than hardcoded.
 //
 // Wiring order still matters: page chrome (clock/particles/starchase/
-// sakura/fireworks/theme/avatar/mascot/dog) has no dependency on vault data
-// and is wired immediately. The widget canvas is built next, entirely from
-// this file - only the heatmap card is vault-reactive (wireBrowserUI/
-// render.ts fill its body on every load/rescan/view-switch); every other
-// card's content is set once, right after creation, and is never touched
-// again by a vault switch (see render.ts's top-of-file note for why that
-// split exists).
+// sakura/fireworks/theme/avatar/mascot/dog/profile-name) has no dependency
+// on vault data and is wired immediately. The widget canvas is built next,
+// entirely from this file - only the heatmap card is vault-reactive
+// (wireBrowserUI/render.ts fill its body on every load/rescan/view-switch);
+// every other card's content is set once, right after creation, and is
+// never touched again by a vault switch (see render.ts's top-of-file note
+// for why that split exists).
 import { wireBrowserUI } from "./dashboard/app.js";
 import { startLiveClock } from "./dashboard/clock.js";
 import { initParticles } from "./dashboard/particles.js";
@@ -31,6 +36,7 @@ import { wireThemeToggle } from "./dashboard/theme.js";
 import { wireAvatar } from "./dashboard/avatar.js";
 import { wireMascot } from "./dashboard/mascot.js";
 import { wireDogAvatar } from "./dashboard/dog-avatar.js";
+import { wireProfileName } from "./dashboard/profile-name.js";
 import { createWidget, loadVisible, saveVisible, type WidgetHandle } from "./dashboard/draggable.js";
 import { startPrayerCard } from "./dashboard/prayer-times.js";
 import { startTimeWindowCard, startBestTimeForCard } from "./dashboard/time-window.js";
@@ -42,6 +48,7 @@ import {
   wireUnplannedActivityCard,
 } from "./dashboard/cognitive-currents.js";
 import { renderScenePanel, wireScenePanel, loadFireworkColorCount, type SceneCardEntry } from "./dashboard/scene-panel.js";
+import { renderQuoteWidget, wireQuoteWidget } from "./dashboard/quote-widget.js";
 
 const root = document.getElementById("app");
 if (!root) {
@@ -77,12 +84,33 @@ if (mascotEl) wireMascot(mascotEl);
 const dogEl = document.getElementById("hk-dog");
 if (dogEl) wireDogAvatar(dogEl);
 
+// Direct request (2026-08-03): the header name/title is click-to-edit, not
+// hardcoded to "Adam Rosman" - anyone can write their own name or a project
+// title instead. index.html already ships "Adam Rosman" as the default.
+const profileNameEl = document.getElementById("hk-profile-name");
+if (profileNameEl) wireProfileName(profileNameEl, "Adam Rosman");
+
 // Both roaming avatars get an individual show/hide switch in the scene
 // taskbar (below), same loadVisible/saveVisible + .hk-widget-hidden
 // mechanism every card's close button already uses - applied directly to
 // their container elements here since neither is a createWidget canvas card.
 if (mascotEl) mascotEl.classList.toggle("hk-widget-hidden", !loadVisible("mascot", true));
 if (dogEl) dogEl.classList.toggle("hk-widget-hidden", !loadVisible("dog-avatar", true));
+
+// Direct request (2026-08-03): "i want a separate scene toggle on/off for
+// the fireflies, lasers, sakura, & fireworks. so it dont appear on on by
+// default all at the same time." Each of the 4 background layers already
+// initializes unconditionally above (initParticles/initStarChase/
+// initSakura/initFireworks) - visibility is applied the same way as the
+// mascot/dog avatars, directly on each layer's container, rather than
+// touching any of those 4 modules' own animation-loop internals. Fireflies
+// (particles.ts - the original, subtlest layer) stays on by default; the
+// newer three start off until a visitor turns one on from the scene
+// taskbar, so all four are never on together for a first-time visitor.
+if (particlesEl) particlesEl.classList.toggle("hk-widget-hidden", !loadVisible("fireflies", true));
+if (starchaseEl) starchaseEl.classList.toggle("hk-widget-hidden", !loadVisible("lasers", false));
+if (sakuraEl) sakuraEl.classList.toggle("hk-widget-hidden", !loadVisible("sakura", false));
+if (fireworksEl) fireworksEl.classList.toggle("hk-widget-hidden", !loadVisible("fireworks", false));
 
 // ---- Widget canvas: every card is created through createWidget, so drag,
 // resize, close, and scene-taskbar show/hide behave identically everywhere.
@@ -161,6 +189,9 @@ if (canvasEl) {
     const notesWidget = createWidget(canvasEl, id, slot === 1 ? "Notes" : `Notes ${slot}`, {
       defaultRect: { left: pos.left, top: pos.top, width: 280, height: 260 },
       defaultVisible: slot === 1,
+      // Direct request (2026-08-03): "ability to rename note from note/note
+      // 1/2/3/4/5 to anything user wanted." Only the 5 Notes widgets opt in.
+      editableTitle: true,
     });
     widgets.push(notesWidget);
     const { root: notepadRoot, area, swatches, formatButtons } = renderNotepad(String(slot));
@@ -207,11 +238,85 @@ if (canvasEl) {
     });
   }
 
-  const { root: panelRoot, tab, toggleInputs, speedSlider, fireworkSlider } = renderScenePanel(entries);
+  // The 4 background-layer toggles - same shape as the two avatars above,
+  // just backed by particlesEl/starchaseEl/sakuraEl/fireworksEl instead of
+  // mascotEl/dogEl.
+  if (particlesEl) {
+    entries.push({
+      id: "fireflies",
+      label: "Fireflies",
+      isVisible: () => loadVisible("fireflies", true),
+      setVisible: (visible) => {
+        saveVisible("fireflies", visible);
+        particlesEl.classList.toggle("hk-widget-hidden", !visible);
+      },
+    });
+  }
+  if (starchaseEl) {
+    entries.push({
+      id: "lasers",
+      label: "Lasers",
+      isVisible: () => loadVisible("lasers", false),
+      setVisible: (visible) => {
+        saveVisible("lasers", visible);
+        starchaseEl.classList.toggle("hk-widget-hidden", !visible);
+      },
+    });
+  }
+  if (sakuraEl) {
+    entries.push({
+      id: "sakura",
+      label: "Sakura",
+      isVisible: () => loadVisible("sakura", false),
+      setVisible: (visible) => {
+        saveVisible("sakura", visible);
+        sakuraEl.classList.toggle("hk-widget-hidden", !visible);
+      },
+    });
+  }
+  if (fireworksEl) {
+    entries.push({
+      id: "fireworks",
+      label: "Fireworks",
+      isVisible: () => loadVisible("fireworks", false),
+      setVisible: (visible) => {
+        saveVisible("fireworks", visible);
+        fireworksEl.classList.toggle("hk-widget-hidden", !visible);
+      },
+    });
+  }
+
+  const {
+    root: panelRoot,
+    tab,
+    toggleInputs,
+    speedSlider,
+    fireworkSlider,
+    footer,
+    list: cardList,
+    rowElements,
+  } = renderScenePanel(entries);
   document.body.appendChild(panelRoot);
-  wireScenePanel(panelRoot, tab, toggleInputs, speedSlider, entries, fireworkSlider, (count) => {
-    fireworksController?.setColorCount(count);
-  });
+  wireScenePanel(
+    panelRoot,
+    tab,
+    toggleInputs,
+    speedSlider,
+    entries,
+    fireworkSlider,
+    (count) => {
+      fireworksController?.setColorCount(count);
+    },
+    { list: cardList, rowElements }
+  );
+
+  // Quote widget lives in the scene panel's footer slot (2026-08-03, direct
+  // request - see quote-widget.ts's own header for the full behavior:
+  // shuffle/loop, timed 7-11s auto-advance, category cycle, and a fresh
+  // quote every time the taskbar is opened).
+  const { root: quoteRoot, textEl: quoteTextEl, categoryBtn: quoteCategoryBtn } = renderQuoteWidget();
+  footer.appendChild(quoteRoot);
+  wireQuoteWidget(panelRoot, quoteTextEl, quoteCategoryBtn);
 }
 
 // ---- Vault-reactive dashboard: source banner/warnings/heatmap content,
@@ -221,15 +326,11 @@ if (canvasEl) {
 // rescan (see render.ts's top-of-file note). ----
 const heatmapBodyEl = widgets.find((w) => w.id === "heatmap")?.body;
 const drawerEl = document.getElementById("hk-drawer");
-const statEvidenceEl = document.getElementById("hk-stat-evidence");
-const statParametersEl = document.getElementById("hk-stat-parameters");
 
 if (!heatmapBodyEl) throw new Error("The heatmap widget wasn't created - check #hk-canvas exists in index.html");
 if (!drawerEl) throw new Error("index.html is missing #hk-drawer");
 
-void wireBrowserUI(
-  root,
-  heatmapBodyEl,
-  drawerEl,
-  statEvidenceEl && statParametersEl ? { evidence: statEvidenceEl, parameters: statParametersEl } : undefined
-);
+// statEls param omitted - the "N notes captured / N traits tracked" profile
+// stats line was retired (2026-08-03, direct request); wireBrowserUI's
+// statEls stays optional so this needs no other change.
+void wireBrowserUI(root, heatmapBodyEl, drawerEl);

@@ -171,11 +171,15 @@ body {
 .hk-profile-body { min-width: 0; }
 .hk-profile-name {
   margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; color: var(--accent-text);
+  cursor: text; border-radius: var(--radius-xs); padding: 2px 6px; margin-left: -6px;
+  transition: background-color var(--duration-short) var(--ease-standard);
+}
+.hk-profile-name:hover { background: var(--state-hover); }
+.hk-profile-name:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.hk-profile-name[contenteditable="true"] {
+  background: var(--card-alt); outline: 2px solid var(--accent-text); outline-offset: 2px; cursor: text;
 }
 .hk-profile-bio { color: var(--text); font-size: 13.5px; max-width: 520px; margin-top: 4px; line-height: 1.6; }
-.hk-profile-stats { display: flex; gap: var(--space-5); margin-top: var(--space-3); flex-wrap: wrap; }
-.hk-profile-stat { font-size: 12px; color: var(--stone); font-family: var(--font-mono); }
-.hk-profile-stat b { color: var(--text-strong); font-family: var(--font-heading); font-weight: 600; }
 
 .hk-theme-toggle {
   display: inline-flex; align-items: center; gap: 6px;
@@ -308,6 +312,20 @@ body {
 .hk-widget-close:hover { color: var(--crimson); background: var(--state-hover); }
 .hk-widget-close:focus-visible { outline: 2px solid var(--crimson); outline-offset: 1px; }
 .hk-widget-hidden { display: none !important; }
+
+/* Editable widget title (2026-08-03, direct request: "ability to rename note
+   from note/note 1/2/3/4/5 to anything user wanted"). Opt-in per widget
+   (draggable.ts's editableTitle option) - only the 5 Notes cards use this.
+   Hover/focus affordance signals "click to rename" without any extra label
+   text; the [contenteditable="true"] state gets a visible field-like
+   treatment while actively renaming. */
+.hk-widget-title-editable { cursor: text; border-radius: var(--radius-xs); padding: 2px 5px; margin: -2px -5px; }
+.hk-widget-title-editable:hover { background: var(--state-hover); }
+.hk-widget-title-editable:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+.hk-widget-title-editable[contenteditable="true"] {
+  background: var(--card); color: var(--text-strong); outline: 2px solid var(--accent-text); outline-offset: 1px;
+  cursor: text; text-transform: none; letter-spacing: normal;
+}
 
 /* ---------- Prayer times ---------- */
 .hk-prayer-list { display: flex; flex-direction: column; gap: 2px; }
@@ -781,6 +799,40 @@ body {
 }
 .hk-scene-card-row:hover { background: var(--state-hover); }
 .hk-scene-card-row input { accent-color: var(--accent-text); flex-shrink: 0; }
+
+/* Row drag grip (2026-08-03, direct request: "ability to sort cards &
+   avatar order on the taskbar") - vanilla pointer-driven reorder, same
+   glyph/style language as every other drag grip in the app (widget cards,
+   the evidence drawer). `.dragging` is applied to whichever row is
+   currently being moved, for the same lifted/lightened feedback
+   .hk-widget.dragging already gives a card being repositioned on the
+   canvas. */
+.hk-scene-row-grip {
+  color: var(--stone); font-size: 11px; letter-spacing: 0.1em; font-family: var(--font-mono);
+  cursor: grab; flex-shrink: 0; touch-action: none;
+}
+.hk-scene-row-grip:active { cursor: grabbing; }
+.hk-scene-card-row.dragging { opacity: 0.6; background: var(--state-hover); }
+
+/* Footer slot (2026-08-03, direct request: quote widget "under footer of
+   the taskbar"). A hairline separator distinguishes it from the card/avatar
+   list above without needing its own heading label. */
+.hk-scene-panel-footer {
+  margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border-hint);
+}
+.hk-quote-widget { display: flex; flex-direction: column; gap: 6px; }
+.hk-quote-category-btn {
+  align-self: flex-start; background: none; border: none; cursor: pointer; padding: 2px 0;
+  font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text);
+  font-family: var(--font-mono);
+}
+.hk-quote-category-btn:hover { text-decoration: underline; }
+.hk-quote-category-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.hk-quote-text {
+  font-size: 12.5px; line-height: 1.5; color: var(--text); font-family: var(--font-body);
+  white-space: pre-line; /* multi-line quotes use real \n, e.g. the sunnah-of-silence list */
+}
+.hk-quote-text.hk-quote-poetic { font-style: italic; color: var(--text-strong); }
 
 @media (prefers-reduced-motion: reduce) {
   :root { --duration-short: 0.01ms; --duration-medium: 0.01ms; }

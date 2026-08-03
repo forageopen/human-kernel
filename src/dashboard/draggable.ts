@@ -152,13 +152,44 @@ export function saveVisible(id: string, visible: boolean): void {
   }
 }
 
+function titleKey(id: string): string {
+  return `hk-widget-title-${id}`;
+}
+
+/** Whether widget `id` has a custom saved title; falls back to
+ * `defaultTitle` if nothing's been saved yet, storage is unavailable, or
+ * the saved value is blank (never let a widget end up with an empty
+ * title). */
+export function loadTitle(id: string, defaultTitle: string): string {
+  try {
+    const raw = localStorage.getItem(titleKey(id));
+    return raw !== null && raw.trim() !== "" ? raw : defaultTitle;
+  } catch {
+    return defaultTitle;
+  }
+}
+
+export function saveTitle(id: string, title: string): void {
+  try {
+    localStorage.setItem(titleKey(id), title);
+  } catch {
+    // no persistence available this session
+  }
+}
+
 export interface WidgetHandle {
   id: string;
+  /** Title at creation time - already reflects any previously-saved rename
+   * (see loadTitle), but is a one-time snapshot, not live. Use getTitle()
+   * for the current value after any in-session rename. */
   title: string;
   root: HTMLElement;
   body: HTMLElement;
   setVisible: (visible: boolean) => void;
   isVisible: () => boolean;
+  /** Current title, live - identical to `title` unless editableTitle was
+   * enabled and the visitor has renamed it since. */
+  getTitle: () => string;
 }
 
 export interface CreateWidgetOptions {
@@ -168,6 +199,14 @@ export interface CreateWidgetOptions {
    * on by default; extra Notes slots pass false so "add a note" reads as an
    * action, not clutter that showed up uninvited. */
   defaultVisible?: boolean;
+  /** Direct request (2026-08-03): "ability to rename note from note/note
+   * 1/2/3/4/5 to anything user wanted." When true, clicking the title turns
+   * it into an editable field; Enter or clicking away saves (persisted per
+   * widget-id), Escape cancels. Opt-in and defaults to false - most cards'
+   * titles ("Activity", "Upcoming Prayer") describe fixed content that
+   * shouldn't invite renaming; only the 5 Notes widgets enable this in
+   * main.ts. */
+  editableTitle?: boolean;
 }
 
 /** Builds one card's full chrome - handle (label + drag grip + close
@@ -177,7 +216,10 @@ export interface CreateWidgetOptions {
  * one function so "close" and "the taskbar can show it again" behave
  * identically everywhere, rather than each card reinventing its own chrome. */
 export function createWidget(canvas: HTMLElement, id: string, title: string, options: CreateWidgetOptions): WidgetHandle {
-  const { defaultRect, defaultVisible = true } = options;
+  const { defaultRect, defaultVisible = true, editableTitle = false } = options;
+
+  const initialTitle = editableTitle ? loadTitle(id, title) : title;
+  let currentTitle = initialTitle;
 
   const root = document.createElement("div");
   root.className = "hk-widget";
@@ -193,7 +235,7 @@ export function createWidget(canvas: HTMLElement, id: string, title: string, opt
   const label = document.createElement("span");
   label.className = "hk-label";
   label.style.margin = "0";
-  label.textContent = title;
+  label.textContent = initialTitle;
   handle.appendChild(label);
 
   const rightGroup = document.createElement("span");
@@ -243,5 +285,65 @@ export function createWidget(canvas: HTMLElement, id: string, title: string, opt
   // `handle` and start a drag at the same time as closing.
   closeBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
 
-  return { id, title, root, body, setVisible, isVisible };
+  if (editableTitle) {
+    label.tabIndex = 0;
+    label.setAttribute("role", "button");
+    label.setAttribute("aria-label", `${currentTitle} - click to rename`);
+    label.classList.add("hk-widget-title-editable");
+    // Same reasoning as the close button above - editing lives inside the
+    // drag handle, so a click here must never also start a drag.
+    label.addEventListener("pointerdown", (e) => e.stopPropagation());
+
+    const startEditing = (): void => {
+      label.contentEditable = "true";
+      label.textContent = currentTitle;
+      label.focus();
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    };
+
+    const commitEditing = (): void => {
+      label.contentEditable = "false";
+      // Never save a blank title - an empty rename falls back to the
+      // original default this widget was created with, not to nothing.
+      currentTitle = label.textContent?.trim() || title;
+      label.textContent = currentTitle;
+      label.setAttribute("aria-label", `${currentTitle} - click to rename`);
+      saveTitle(id, currentTitle);
+    };
+
+    const cancelEditing = (): void => {
+      label.contentEditable = "false";
+      label.textContent = currentTitle;
+    };
+
+    label.addEventListener("click", () => {
+      if (label.contentEditable !== "true") startEditing();
+    });
+    label.addEventListener("keydown", (e) => {
+      if (label.contentEditable !== "true") {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          startEditing();
+        }
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        label.blur(); // blur listener below runs commitEditing()
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        cancelEditing();
+        label.blur();
+      }
+    });
+    label.addEventListener("blur", () => {
+      if (label.contentEditable === "true") commitEditing();
+    });
+  }
+
+  return { id, title: initialTitle, root, body, setVisible, isVisible, getTitle: () => currentTitle };
 }

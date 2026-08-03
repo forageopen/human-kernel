@@ -112,23 +112,29 @@ export interface DashboardCallbacks {
   onViewSample: () => void;
 }
 
-function renderSourceBanner(viewing: ViewSource, callbacks: DashboardCallbacks): HTMLElement {
+/** Returns null for the sample view - direct request (2026-08-03): retire
+ * "You're looking at a real example profile - Adam's own." and its "Use my
+ * own notes instead" link. The dashboard is now framed as one
+ * personalizable space (the header name/title is click-to-edit -
+ * profile-name.ts) rather than "a sample you might swap for your own real
+ * vault," so nothing renders here for the default (sample) view anymore.
+ * The own-vault case is untouched: onConnectOwnVault/the File System Access
+ * vault-picker code (app.ts) still exists and still works, it's just no
+ * longer surfaced by a button in this banner - if a vault IS connected some
+ * other way, this still confirms it and offers a way back to the sample
+ * data. */
+function renderSourceBanner(viewing: ViewSource, callbacks: DashboardCallbacks): HTMLElement | null {
+  if (viewing === "sample") return null;
+
   const banner = document.createElement("div");
   banner.className = "hk-source-banner";
 
   const text = document.createElement("span");
+  text.textContent = "Showing your own notes.";
   const link = document.createElement("button");
   link.className = "hk-link-btn";
-
-  if (viewing === "sample") {
-    text.textContent = "You're looking at a real example profile - Adam's own.";
-    link.textContent = "Use my own notes instead";
-    link.addEventListener("click", callbacks.onConnectOwnVault);
-  } else {
-    text.textContent = "Showing your own notes.";
-    link.textContent = "Back to the example profile";
-    link.addEventListener("click", callbacks.onViewSample);
-  }
+  link.textContent = "Back to the example profile";
+  link.addEventListener("click", callbacks.onViewSample);
 
   banner.appendChild(text);
   banner.appendChild(link);
@@ -151,7 +157,8 @@ export function renderDashboard(
   callbacks: DashboardCallbacks
 ): void {
   appRoot.innerHTML = "";
-  appRoot.appendChild(renderSourceBanner(viewing, callbacks));
+  const banner = renderSourceBanner(viewing, callbacks);
+  if (banner) appRoot.appendChild(banner);
 
   if (viewing === "own-vault") {
     const toolbar = document.createElement("div");

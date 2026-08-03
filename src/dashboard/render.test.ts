@@ -201,15 +201,16 @@ describe("renderDashboard", () => {
 });
 
 describe("renderDashboard source banner (view: sample vs. own-vault)", () => {
-  it("sample view: names the example profile and offers to connect a vault", () => {
+  it("sample view: renders no source banner at all (retired 2026-08-03 - direct request)", () => {
     const appRoot = document.createElement("div");
     const heatmapBody = document.createElement("div");
     const callbacks = makeCallbacks();
     renderDashboard(appRoot, heatmapBody, makeIndex(), [], "sample", callbacks);
 
-    expect(appRoot.querySelector(".hk-source-banner")?.textContent).toMatch(/example profile/i);
-    appRoot.querySelector<HTMLElement>(".hk-source-banner .hk-link-btn")?.dispatchEvent(new Event("click", { bubbles: true }));
-    expect(callbacks.onConnectOwnVault).toHaveBeenCalledTimes(1);
+    expect(appRoot.querySelector(".hk-source-banner")).toBeNull();
+    expect(appRoot.textContent).not.toMatch(/real example profile/i);
+    expect(appRoot.textContent).not.toMatch(/use my own notes instead/i);
+    expect(callbacks.onConnectOwnVault).not.toHaveBeenCalled();
   });
 
   it("own-vault view: says it's showing the visitor's own notes and offers to go back to the sample", () => {

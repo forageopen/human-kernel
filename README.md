@@ -1,5 +1,7 @@
 # Human Kernel
 
+*On-page brand name (2026-08-03, direct request): the deployed dashboard now displays as **"Human on Cloud"** in its title/ribbon - this repo, its GitHub slug, and the live URL below are unchanged and still called `human-kernel`. That's a deliberate scope boundary: renaming the repo itself would break the live URL, the CI badge, and the git remote everywhere it's hardcoded, none of which was asked for - only the on-page copy changed.*
+
 [![CI](https://github.com/forageopen/human-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/forageopen/human-kernel/actions/workflows/ci.yml)
 
 Browser-native, local-first knowledge environment that compiles a person's own notes into an evidence-linked model of their behavioral patterns — visualized as a dashboard, not asserted as a personality score. No install, no account, no server-side storage of personal data.

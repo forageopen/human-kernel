@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Human Kernel</title>
+<title>Human on Cloud</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital@0;1&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -51,7 +51,7 @@
 <div class="hk-shell">
 
   <div class="hk-ribbon">
-    <span class="hk-ribbon-brand">Human Kernel</span>
+    <span class="hk-ribbon-brand">Human on Cloud</span>
     <!-- Static fallback text only - theme.ts's wireThemeToggle overwrites this
          on load with whichever mode is actually active (default: dark), so
          the label always names what's on screen, not what a click leads to. -->
@@ -68,20 +68,32 @@
       <div class="hk-avatar-overlay">Click to<br>regenerate</div>
     </div>
     <div class="hk-profile-body">
-      <h1 class="hk-profile-name">Adam Rosman</h1>
+      <!-- Editable header (2026-08-03, direct request: "editable upon
+           clicking, like anyone can either write their name, or can write
+           any title for their project") - src/dashboard/profile-name.ts
+           makes this click-to-edit, persisted in localStorage. Starts as
+           "Adam Rosman" (still true until someone changes it), not
+           hardcoded as non-editable - a visitor can turn it into their own
+           name or a project title. -->
+      <!-- role="button" (not "textbox") to match the exact same click-to-arm-
+           editing interaction createWidget's editableTitle option already
+           uses for Notes card titles (draggable.ts) - profile-name.ts's
+           wireProfileName() overwrites this aria-label immediately on load
+           with the live "<name> - click to edit" form, same pattern as
+           createWidget's own aria-label upkeep. -->
+      <h1 class="hk-profile-name" id="hk-profile-name" tabindex="0" role="button" aria-label="Adam Rosman - click to edit">Adam Rosman</h1>
       <div class="hk-profile-bio">Here's my virtual desktop for your day-to-day assistance. I've provided useful cards to help you stay on track. Have fun working!</div>
-      <div class="hk-profile-stats">
-        <span class="hk-profile-stat"><b id="hk-stat-evidence">–</b> notes captured</span>
-        <span class="hk-profile-stat"><b id="hk-stat-parameters">–</b> traits tracked</span>
-      </div>
     </div>
   </div>
 
-  <!-- Vault-reactive area only: source banner, rescan control, warnings, and
-       an empty-state line if a vault has nothing usable in it yet. Rebuilt
-       on every view switch/rescan - see src/dashboard/render.ts's top-of-file
-       note for why the widget canvas below is deliberately NOT inside this
-       element. -->
+  <!-- Vault-reactive area only: rescan control, warnings, and an empty-state
+       line if a vault has nothing usable in it yet. The old sample-vs-own
+       source banner text ("You're looking at a real example profile...",
+       "Use my own notes instead") is retired (2026-08-03, direct request) -
+       render.ts's renderSourceBanner returns null for the sample view now.
+       Rebuilt on every view switch/rescan - see src/dashboard/render.ts's
+       top-of-file note for why the widget canvas below is deliberately NOT
+       inside this element. -->
   <div id="app" class="hk-page"></div>
 
 </div>
@@ -105,7 +117,7 @@
 <div class="hk-shell">
 
   <footer class="hk-footer">
-    Built by <a href="https://github.com/forageopen" target="_blank" rel="noopener">Adam Rosman</a> with Claude (Anthropic) — see <a href="https://github.com/forageopen/human-kernel#credits" target="_blank" rel="noopener">Credits</a>.
+    <a href="https://github.com/adamrosmanx" target="_blank" rel="noopener">Adam Rosman</a> for <a href="https://github.com/forageopen" target="_blank" rel="noopener">Forage</a> — see <a href="https://github.com/forageopen/human-kernel#credits" target="_blank" rel="noopener">Credits</a>.
     <div class="hk-clock" id="hk-live-clock"></div>
   </footer>
 

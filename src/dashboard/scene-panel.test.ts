@@ -6,10 +6,29 @@ import {
   applySpeed,
   loadFireworkColorCount,
   saveFireworkColorCount,
+  loadCardOrder,
+  saveCardOrder,
+  applyStoredOrder,
   renderScenePanel,
   wireScenePanel,
   type SceneCardEntry,
 } from "./scene-panel.js";
+
+// jsdom doesn't implement PointerEvent at all (a documented gap - see
+// mascot.test.ts/draggable's own drag tests for the same shim). Polyfill
+// just enough of it - MouseEvent's clientX/clientY - for the row-reorder
+// drag simulation below. Chromium (this app's actual target, per ADR-0003)
+// implements PointerEvent natively; this shim only exists for the test run.
+if (typeof globalThis.PointerEvent === "undefined") {
+  class PointerEventPolyfill extends MouseEvent {
+    public pointerId: number;
+    constructor(type: string, params: MouseEventInit & { pointerId?: number } = {}) {
+      super(type, params);
+      this.pointerId = params.pointerId ?? 0;
+    }
+  }
+  (globalThis as unknown as { PointerEvent: unknown }).PointerEvent = PointerEventPolyfill;
+}
 
 function makeEntry(id: string, label: string, initiallyVisible = true): SceneCardEntry & { _visible: boolean } {
   const entry = {
@@ -75,6 +94,58 @@ describe("loadFireworkColorCount / saveFireworkColorCount", () => {
   });
 });
 
+describe("loadCardOrder / saveCardOrder", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("returns null when nothing has been saved", () => {
+    expect(loadCardOrder()).toBeNull();
+  });
+
+  it("round-trips a saved order", () => {
+    saveCardOrder(["b", "a", "c"]);
+    expect(loadCardOrder()).toEqual(["b", "a", "c"]);
+  });
+
+  it("returns null for garbage stored JSON or a non-string-array shape", () => {
+    localStorage.setItem("hk-scene-card-order", "not json");
+    expect(loadCardOrder()).toBeNull();
+    localStorage.setItem("hk-scene-card-order", JSON.stringify([1, 2, 3]));
+    expect(loadCardOrder()).toBeNull();
+  });
+});
+
+describe("applyStoredOrder", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("returns entries unchanged when nothing has been saved", () => {
+    const entries = [makeEntry("a", "A"), makeEntry("b", "B")];
+    expect(applyStoredOrder(entries)).toEqual(entries);
+  });
+
+  it("reorders entries to match a saved order", () => {
+    const a = makeEntry("a", "A");
+    const b = makeEntry("b", "B");
+    const c = makeEntry("c", "C");
+    saveCardOrder(["c", "a", "b"]);
+    expect(applyStoredOrder([a, b, c]).map((e) => e.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("appends entries with no saved position after everything that has one, in their original relative order", () => {
+    const a = makeEntry("a", "A");
+    const b = makeEntry("b", "B");
+    const c = makeEntry("c", "C"); // never saved - e.g. a card added since
+    saveCardOrder(["b", "a"]);
+    expect(applyStoredOrder([a, b, c]).map((e) => e.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("silently ignores saved IDs that no longer match any current entry", () => {
+    const a = makeEntry("a", "A");
+    const b = makeEntry("b", "B");
+    saveCardOrder(["ghost", "b", "a"]);
+    expect(applyStoredOrder([a, b]).map((e) => e.id)).toEqual(["b", "a"]);
+  });
+});
+
 describe("renderScenePanel", () => {
   it("builds one toggle row per card entry, plus both sliders and an edge tab", () => {
     const entries = [makeEntry("heatmap", "Activity"), makeEntry("prayer", "Prayer Times")];
@@ -90,6 +161,36 @@ describe("renderScenePanel", () => {
     expect(fireworkSlider.max).toBe("24");
     expect(root.textContent).toContain("Activity");
     expect(root.textContent).toContain("Prayer Times");
+  });
+
+  it("includes an empty footer slot inside the panel, for the quote widget to be appended into", () => {
+    const { root, footer } = renderScenePanel([]);
+    expect(root.contains(footer)).toBe(true);
+    expect(footer.classList.contains("hk-scene-panel-footer")).toBe(true);
+    expect(footer.children.length).toBe(0);
+  });
+
+  it("gives each row a drag grip and returns a rowElements map matching toggleInputs", () => {
+    const entries = [makeEntry("heatmap", "Activity"), makeEntry("prayer", "Prayer Times")];
+    const { list, rowElements } = renderScenePanel(entries);
+
+    expect(rowElements.size).toBe(2);
+    expect(list.contains(rowElements.get("heatmap")!)).toBe(true);
+    expect(rowElements.get("heatmap")!.querySelector(".hk-scene-row-grip")).not.toBeNull();
+    expect(rowElements.get("heatmap")!.dataset.widgetId).toBe("heatmap");
+  });
+
+  it("renders rows in a previously-saved order rather than the entries array's own order", () => {
+    localStorage.clear();
+    saveCardOrder(["prayer", "heatmap"]);
+    const entries = [makeEntry("heatmap", "Activity"), makeEntry("prayer", "Prayer Times")];
+    const { list } = renderScenePanel(entries);
+
+    const idsInDomOrder = Array.from(list.querySelectorAll<HTMLElement>(".hk-scene-card-row")).map(
+      (r) => r.dataset.widgetId
+    );
+    expect(idsInDomOrder).toEqual(["prayer", "heatmap"]);
+    localStorage.clear();
   });
 });
 
@@ -193,5 +294,60 @@ describe("wireScenePanel", () => {
     const entries: SceneCardEntry[] = [];
     const { root, tab, toggleInputs, speedSlider } = renderScenePanel(entries);
     expect(() => wireScenePanel(root, tab, toggleInputs, speedSlider, entries)).not.toThrow();
+  });
+
+  it("works without the reorder param at all - it's optional too", () => {
+    const entries = [makeEntry("a", "A")];
+    const { root, tab, toggleInputs, speedSlider } = renderScenePanel(entries);
+    expect(() => wireScenePanel(root, tab, toggleInputs, speedSlider, entries)).not.toThrow();
+  });
+
+  it("dragging a row's grip past a sibling's midpoint reorders the DOM and persists the new order", () => {
+    localStorage.clear();
+    document.body.innerHTML = "";
+    const entries = [makeEntry("a", "A"), makeEntry("b", "B"), makeEntry("c", "C")];
+    const { root, tab, toggleInputs, speedSlider, list, rowElements } = renderScenePanel(entries);
+    document.body.appendChild(root); // getBoundingClientRect needs real layout attachment in jsdom
+    wireScenePanel(root, tab, toggleInputs, speedSlider, entries, undefined, undefined, { list, rowElements });
+
+    const rowA = rowElements.get("a")!;
+    const rowC = rowElements.get("c")!;
+    // jsdom never actually lays elements out (every rect is 0x0 at 0,0), so
+    // stub getBoundingClientRect to simulate A, B, C stacked top to bottom.
+    const rects: Record<string, DOMRect> = {
+      a: { top: 0, height: 30 } as DOMRect,
+      b: { top: 30, height: 30 } as DOMRect,
+      c: { top: 60, height: 30 } as DOMRect,
+    };
+    for (const [id, row] of rowElements) {
+      row.getBoundingClientRect = () => rects[id]!;
+    }
+
+    const grip = rowA.querySelector<HTMLElement>(".hk-scene-row-grip")!;
+    grip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    // Drag row A down past row C's midpoint (60 + 15 = 75).
+    document.dispatchEvent(new PointerEvent("pointermove", { clientY: 80 }));
+    document.dispatchEvent(new PointerEvent("pointerup"));
+
+    const finalOrder = Array.from(list.querySelectorAll<HTMLElement>(".hk-scene-card-row")).map(
+      (r) => r.dataset.widgetId
+    );
+    expect(finalOrder).toEqual(["b", "c", "a"]);
+    expect(loadCardOrder()).toEqual(["b", "c", "a"]);
+    expect(rowC).not.toBeNull(); // sanity: row C is still the same element, just reordered around
+    localStorage.clear();
+  });
+
+  it("clicking a row's grip does not toggle that row's checkbox (label-forwarding is suppressed)", () => {
+    const entries = [makeEntry("a", "A", false)];
+    const { root, tab, toggleInputs, speedSlider, list, rowElements } = renderScenePanel(entries);
+    wireScenePanel(root, tab, toggleInputs, speedSlider, entries, undefined, undefined, { list, rowElements });
+
+    const grip = rowElements.get("a")!.querySelector<HTMLElement>(".hk-scene-row-grip")!;
+    const clickEvent = new Event("click", { bubbles: true, cancelable: true });
+    grip.dispatchEvent(clickEvent);
+
+    expect(clickEvent.defaultPrevented).toBe(true);
+    expect(toggleInputs.get("a")!.checked).toBe(false); // unchanged - the click never reached the checkbox
   });
 });
