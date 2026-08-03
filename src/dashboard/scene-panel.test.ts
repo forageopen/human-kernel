@@ -194,6 +194,42 @@ describe("renderScenePanel", () => {
   });
 });
 
+describe("renderScenePanel options (2026-08-03, tab 2 reuse)", () => {
+  it("defaults to both sliders included and the original Scene / Cards & avatars labels when no options are given", () => {
+    const { root, speedSlider, fireworkSlider } = renderScenePanel([]);
+    expect(root.contains(speedSlider)).toBe(true);
+    expect(root.contains(fireworkSlider)).toBe(true);
+    expect(root.textContent).toContain("Scene");
+    expect(root.textContent).toContain("Cards & avatars");
+  });
+
+  it("omits the speed slider from the panel when includeSpeedSlider is false, but still returns a usable element", () => {
+    const { root, speedSlider } = renderScenePanel([], { includeSpeedSlider: false });
+    expect(root.contains(speedSlider)).toBe(false);
+    expect(speedSlider.type).toBe("range");
+  });
+
+  it("omits the firework slider from the panel when includeFireworkSlider is false", () => {
+    const { root, fireworkSlider } = renderScenePanel([], { includeFireworkSlider: false });
+    expect(root.contains(fireworkSlider)).toBe(false);
+    expect(fireworkSlider.type).toBe("range");
+  });
+
+  it("uses a custom panel label and list heading when provided", () => {
+    const { root } = renderScenePanel([], { panelLabel: "Supplements", listHeading: "Supplements list" });
+    expect(root.textContent).toContain("Supplements");
+    expect(root.textContent).toContain("Supplements list");
+    expect(root.textContent).not.toContain("Cards & avatars");
+  });
+
+  it("a slider excluded via options still works normally if wireScenePanel is called with it anyway (stays inert since it's detached, not because wireScenePanel treats it differently)", () => {
+    const entries: SceneCardEntry[] = [];
+    const { root, tab, toggleInputs, speedSlider } = renderScenePanel(entries, { includeSpeedSlider: false });
+    expect(() => wireScenePanel(root, tab, toggleInputs, speedSlider, entries)).not.toThrow();
+    expect(root.contains(speedSlider)).toBe(false);
+  });
+});
+
 describe("wireScenePanel", () => {
   beforeEach(() => localStorage.clear());
 

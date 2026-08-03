@@ -147,7 +147,34 @@ export function applyStoredOrder(entries: SceneCardEntry[]): SceneCardEntry[] {
   return ordered;
 }
 
-export function renderScenePanel(entries: SceneCardEntry[]): {
+export interface ScenePanelOptions {
+  /** Heading at the top of the panel - default "Scene". Override for an
+   * instance that isn't controlling this page's ambient background (tab
+   * 2's supplement taskbar - see main.ts). */
+  panelLabel?: string;
+  /** Heading directly above the card/avatar list - default "Cards &
+   * avatars". Override when the list holds neither (tab 2's five
+   * supplement cards are not "avatars"). */
+  listHeading?: string;
+  /** Whether to append the shared background-motion speed slider into the
+   * panel - default true. Only tab 1's dashboard has ambient background
+   * layers for --hk-speed to mean anything to (particles/starchase/sakura);
+   * tab 2's supplement taskbar has none, so it opts out. The slider element
+   * is still created and returned either way, just left undetached from
+   * the DOM when excluded, so wireScenePanel needs no changes at all to
+   * stay agnostic to whether it's actually on screen. */
+  includeSpeedSlider?: boolean;
+  /** Whether to append the firework color-count slider into the panel -
+   * default true, same reasoning/inertness-when-excluded as
+   * includeSpeedSlider. Only relevant where a fireworks.ts layer exists
+   * (tab 1). */
+  includeFireworkSlider?: boolean;
+}
+
+export function renderScenePanel(
+  entries: SceneCardEntry[],
+  options: ScenePanelOptions = {}
+): {
   root: HTMLElement;
   tab: HTMLElement;
   toggleInputs: Map<string, HTMLInputElement>;
@@ -157,6 +184,13 @@ export function renderScenePanel(entries: SceneCardEntry[]): {
   list: HTMLElement;
   rowElements: Map<string, HTMLElement>;
 } {
+  const {
+    panelLabel = "Scene",
+    listHeading: listHeadingText = "Cards & avatars",
+    includeSpeedSlider = true,
+    includeFireworkSlider = true,
+  } = options;
+
   const root = document.createElement("div");
   root.className = "hk-scene-panel";
 
@@ -172,7 +206,7 @@ export function renderScenePanel(entries: SceneCardEntry[]): {
 
   const heading = document.createElement("div");
   heading.className = "hk-label";
-  heading.textContent = "Scene";
+  heading.textContent = panelLabel;
   inner.appendChild(heading);
 
   const speedLabel = document.createElement("label");
@@ -185,7 +219,7 @@ export function renderScenePanel(entries: SceneCardEntry[]): {
   speedSlider.step = "0.05";
   speedSlider.className = "hk-scene-speed-slider";
   speedLabel.appendChild(speedSlider);
-  inner.appendChild(speedLabel);
+  if (includeSpeedSlider) inner.appendChild(speedLabel);
 
   const fireworkLabel = document.createElement("label");
   fireworkLabel.className = "hk-scene-speed-label";
@@ -197,11 +231,11 @@ export function renderScenePanel(entries: SceneCardEntry[]): {
   fireworkSlider.step = "1";
   fireworkSlider.className = "hk-scene-speed-slider";
   fireworkLabel.appendChild(fireworkSlider);
-  inner.appendChild(fireworkLabel);
+  if (includeFireworkSlider) inner.appendChild(fireworkLabel);
 
   const listHeading = document.createElement("div");
   listHeading.className = "hk-label hk-scene-cards-heading";
-  listHeading.textContent = "Cards & avatars";
+  listHeading.textContent = listHeadingText;
   inner.appendChild(listHeading);
 
   const list = document.createElement("div");

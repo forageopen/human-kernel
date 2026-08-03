@@ -17,6 +17,15 @@
 </head>
 <body>
 
+<!-- Chrome-style tab bar (2026-08-03, Cognitive Supplement Dashboard) -
+     mounted entirely by src/dashboard/tabs.ts's renderTabBar()/wireTabBar()
+     from main.ts, same "nothing static needed here" convention as the scene
+     taskbar below. Deliberately the very first element in <body> and a
+     sibling of both panels (not nested in either) so it stays visible and
+     clickable no matter which of the two panels below is currently active. -->
+
+<div id="hk-tab1-panel">
+
 <!-- Four independent ambient background layers (page chrome, not dashboard
      data) - fixed, behind everything, pointer-events disabled. Populated by
      main.ts via src/dashboard/particles.ts (slow drifting dots),
@@ -127,6 +136,35 @@
      every re-render, so its one-time drag wiring (render.ts's renderDrawer)
      never gets re-attached. Opens on a calendar day click. -->
 <div class="hk-drawer" id="hk-drawer"></div>
+
+</div><!-- /#hk-tab1-panel -->
+
+<!-- Tab 2: Cognitive Supplement Dashboard (Phase 0 only - see
+     src/dashboard/supplements.ts's header for full scope reasoning). Black
+     background is a deliberate THIRD visual mode, independent of the
+     existing dark/light/feminine theme cycle (data-theme on <html>) - both
+     tabs share that one attribute, so tab 2's black look is carried by the
+     .hk-tab2-panel class instead, not by theme state. Hidden by default
+     (hk-tab-hidden) since "dashboard" is the default active tab
+     (tabs.ts's loadActiveTab); wireTabBar corrects this on load if the
+     visitor's last-active tab was actually "supplements". Canvas + its own
+     scene taskbar are mounted entirely by main.ts, reusing the same
+     createWidget (draggable.ts) and renderScenePanel/wireScenePanel
+     (scene-panel.ts) used for tab 1, unmodified - five cards
+     (src/dashboard/supplement-card.ts), one per supplement in
+     supplements.ts's SUPPLEMENTS list, each a taskbar-toggleable widget same
+     as tab 1's Notes cards. Starts empty on purpose, same reasoning as
+     #hk-canvas above. -->
+<div id="hk-tab2-panel" class="hk-tab2-panel hk-tab-hidden">
+  <div class="hk-canvas hk-tab2-canvas" id="hk-tab2-canvas"></div>
+</div>
+
+<!-- Reminder toasts (Cognitive Supplement Dashboard, Phase 0) - page-level,
+     sibling of both panels, so a reminder stays visible no matter which tab
+     is currently selected (src/dashboard/reminder.ts's startReminders takes
+     this element as its toastContainer). aria-live so a toast is announced
+     to screen readers as it appears, not just visually. -->
+<div class="hk-reminder-toast-container" id="hk-reminder-toast-container" aria-live="polite"></div>
 
 <script type="module" src="dist/main.js"></script>
 </body>

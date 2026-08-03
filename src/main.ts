@@ -18,6 +18,17 @@
 // createWidget's editableTitle option (click-to-rename). The page header
 // name/title (profile-name.ts) is click-to-edit rather than hardcoded.
 //
+// 2026-08-03 pass (second): a second product tab - Cognitive Supplement
+// Dashboard, Phase 0 only (tabs.ts, supplements.ts, supplement-card.ts,
+// reminder.ts). Tab 2 gets its own canvas and its own scene-taskbar
+// instance, reusing createWidget and renderScenePanel/wireScenePanel
+// unmodified in behavior (scene-panel.ts gained an options param so this
+// second instance can drop the speed/firework sliders, which mean nothing
+// on a tab with no ambient background - see its ScenePanelOptions comment).
+// A single shared reminder clock (reminder.ts) drives both the taken-today
+// reminder and keeping every checkbox honest across a KL midnight rollover,
+// regardless of which tab is currently showing.
+//
 // Wiring order still matters: page chrome (clock/particles/starchase/
 // sakura/fireworks/theme/avatar/mascot/dog/profile-name) has no dependency
 // on vault data and is wired immediately. The widget canvas is built next,
@@ -49,6 +60,10 @@ import {
 } from "./dashboard/cognitive-currents.js";
 import { renderScenePanel, wireScenePanel, loadFireworkColorCount, type SceneCardEntry } from "./dashboard/scene-panel.js";
 import { renderQuoteWidget, wireQuoteWidget } from "./dashboard/quote-widget.js";
+import { renderTabBar, wireTabBar } from "./dashboard/tabs.js";
+import { SUPPLEMENTS } from "./dashboard/supplements.js";
+import { renderSupplementCard, wireSupplementCard } from "./dashboard/supplement-card.js";
+import { startReminders, type ReminderTarget } from "./dashboard/reminder.js";
 
 const root = document.getElementById("app");
 if (!root) {
@@ -89,6 +104,25 @@ if (dogEl) wireDogAvatar(dogEl);
 // title instead. index.html already ships "Adam Rosman" as the default.
 const profileNameEl = document.getElementById("hk-profile-name");
 if (profileNameEl) wireProfileName(profileNameEl, "Adam Rosman");
+
+// ---- Tab bar (2026-08-03, second product tab: Cognitive Supplement
+// Dashboard). Chrome-style two-tab switcher, mounted as the very first
+// element in <body> so it stays visible/clickable regardless of which of
+// the two panels below is active. Both panels are static in index.html
+// (#hk-tab1-panel wraps everything the dashboard already had; #hk-tab2-panel
+// is the new black-background supplements tab, built further below) -
+// wireTabBar just toggles which one is hidden and restores/persists the
+// visitor's last-active tab; no onSwitch callback is needed since nothing
+// else in this file depends on the switch happening (tab 1's animation
+// loops keep running while hidden, same as any display:none content -
+// Phase 0 has no requirement to pause them). ----
+const tab1PanelEl = document.getElementById("hk-tab1-panel");
+const tab2PanelEl = document.getElementById("hk-tab2-panel");
+if (tab1PanelEl && tab2PanelEl) {
+  const tabBarElements = renderTabBar();
+  document.body.insertBefore(tabBarElements.root, document.body.firstChild);
+  wireTabBar(tabBarElements, { dashboard: tab1PanelEl, supplements: tab2PanelEl });
+}
 
 // Both roaming avatars get an individual show/hide switch in the scene
 // taskbar (below), same loadVisible/saveVisible + .hk-widget-hidden
@@ -296,7 +330,10 @@ if (canvasEl) {
     list: cardList,
     rowElements,
   } = renderScenePanel(entries);
-  document.body.appendChild(panelRoot);
+  // Mounted inside #hk-tab1-panel (not document.body directly) so hiding
+  // that panel on tab switch also hides this taskbar - see the tab-bar
+  // wiring above (2026-08-03).
+  (tab1PanelEl ?? document.body).appendChild(panelRoot);
   wireScenePanel(
     panelRoot,
     tab,
@@ -317,6 +354,90 @@ if (canvasEl) {
   const { root: quoteRoot, textEl: quoteTextEl, categoryBtn: quoteCategoryBtn } = renderQuoteWidget();
   footer.appendChild(quoteRoot);
   wireQuoteWidget(panelRoot, quoteTextEl, quoteCategoryBtn);
+}
+
+// ---- Tab 2: Cognitive Supplement Dashboard (Phase 0 only - see
+// src/dashboard/supplements.ts's header for the full scope reasoning: fixed
+// user-set times, a reminder, a taken/not-taken checkbox, nothing else - no
+// time slider, no drag-and-drop scheduling, no rules engine, no status
+// effects, no graph). Reuses createWidget (draggable.ts) and
+// renderScenePanel/wireScenePanel (scene-panel.ts) exactly as tab 1 does
+// above - a second, fully independent instance of each. The speed/firework
+// sliders are excluded (scene-panel.ts's ScenePanelOptions) since neither
+// means anything here - there's no ambient background or fireworks layer
+// on this tab to control. ----
+const tab2CanvasEl = document.getElementById("hk-tab2-canvas");
+const reminderToastEl = document.getElementById("hk-reminder-toast-container");
+
+if (tab2CanvasEl) {
+  const supplementWidgets: WidgetHandle[] = [];
+  const reminderTargets: ReminderTarget[] = [];
+
+  // First-time-visitor starting layout only, same convention as the Notes
+  // layout above - dragging/resizing any card persists per-widget-id
+  // (draggable.ts) and overrides this on every later visit.
+  const supplementLayout: Array<{ left: number; top: number }> = [
+    { left: 0, top: 0 },
+    { left: 290, top: 0 },
+    { left: 580, top: 0 },
+    { left: 0, top: 260 },
+    { left: 290, top: 260 },
+  ];
+
+  SUPPLEMENTS.forEach((supplement, i) => {
+    const pos = supplementLayout[i]!;
+    const widget = createWidget(tab2CanvasEl, `supplement-${supplement.id}`, supplement.name, {
+      defaultRect: { left: pos.left, top: pos.top, width: 270, height: 210 },
+    });
+    supplementWidgets.push(widget);
+    const cardElements = renderSupplementCard();
+    widget.body.appendChild(cardElements.root);
+    wireSupplementCard(supplement, cardElements);
+    reminderTargets.push({ supplement, checkbox: cardElements.checkbox });
+  });
+
+  // Tab 2's own scene taskbar - same component/call shape as tab 1's above,
+  // a fully separate instance backed by supplementWidgets instead of the
+  // dashboard's widgets array. Reorder support is kept (it's the app's
+  // existing generic taskbar-list convenience, not a new feature being
+  // added for supplements - see scene-panel.ts); the speed/firework sliders
+  // are dropped via options instead.
+  const supplementEntries: SceneCardEntry[] = supplementWidgets.map((w) => ({
+    id: w.id,
+    label: w.title,
+    isVisible: w.isVisible,
+    setVisible: w.setVisible,
+  }));
+  const {
+    root: supplementPanelRoot,
+    tab: supplementTab,
+    toggleInputs: supplementToggleInputs,
+    speedSlider: supplementSpeedSlider,
+    list: supplementList,
+    rowElements: supplementRowElements,
+  } = renderScenePanel(supplementEntries, {
+    panelLabel: "Supplements",
+    listHeading: "Supplements",
+    includeSpeedSlider: false,
+    includeFireworkSlider: false,
+  });
+  tab2PanelEl?.appendChild(supplementPanelRoot);
+  wireScenePanel(
+    supplementPanelRoot,
+    supplementTab,
+    supplementToggleInputs,
+    supplementSpeedSlider,
+    supplementEntries,
+    undefined,
+    undefined,
+    { list: supplementList, rowElements: supplementRowElements }
+  );
+
+  // Reminder mechanism (reminder.ts) - one shared clock for all 5 cards; see
+  // its own header for the full reasoning (foreground-only, at-most-once-
+  // per-KL-day per supplement, keeps every checkbox honest across a
+  // midnight rollover) - runs regardless of which tab is currently showing.
+  if (reminderToastEl) startReminders(reminderTargets, reminderToastEl);
 }
 
 // ---- Vault-reactive dashboard: source banner/warnings/heatmap content,

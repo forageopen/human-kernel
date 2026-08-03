@@ -834,9 +834,105 @@ body {
 }
 .hk-quote-text.hk-quote-poetic { font-style: italic; color: var(--text-strong); }
 
+/* ---------- Tab bar + Tab 2 shell (2026-08-03, second product tab:
+   Cognitive Supplement Dashboard, Phase 0 only - see supplements.ts's
+   header for the full scope). ---------- */
+.hk-tab-hidden { display: none; }
+
+.hk-tab-bar {
+  display: flex; gap: 2px; padding: var(--space-2) var(--gutter-sm) 0;
+  background: var(--bg); border-bottom: 1px solid var(--border-hint);
+  font-family: var(--font-heading);
+}
+@media (min-width: 900px) { .hk-tab-bar { padding-left: var(--gutter-lg); padding-right: var(--gutter-lg); } }
+@media (min-width: 1440px) { .hk-tab-bar { padding-left: var(--gutter-xl); padding-right: var(--gutter-xl); } }
+.hk-tab-btn {
+  appearance: none; cursor: pointer; border: 1px solid var(--border-hint); border-bottom: none;
+  background: var(--card-alt); color: var(--stone); font-size: 12.5px; font-weight: 500;
+  padding: 9px var(--space-5); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: background-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
+}
+.hk-tab-btn:hover { color: var(--text-strong); }
+.hk-tab-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
+.hk-tab-btn.active { background: var(--bg); color: var(--accent-text); }
+
+/* Deliberate THIRD visual mode, independent of the dark/light/feminine
+   theme cycle above - both tabs share <html>'s one data-theme attribute, so
+   tab 2's black look can't be carried by data-theme without also changing
+   tab 1's. Instead, every themed CSS variable is re-declared here, scoped
+   to this subtree via ordinary custom-property cascade - every reused
+   component inside (createWidget's .hk-widget chrome, .hk-scene-panel, the
+   supplement card below) automatically inherits these values with zero
+   changes of its own, the same way [data-theme="light"] above overrides
+   the root defaults for everything under <html>, just scoped to one
+   element instead. Hardcoded dark-tier values (not var(--bg)/
+   var(--accent-text)) on purpose: this surface is ALWAYS dark, so per the
+   brand guideline (Ember Gold is dark-surface-only) it always gets the
+   real dark-tier accent, never the light-theme Sage swap var(--accent-text)
+   would apply if tab 1 happened to be in light mode. color-scheme: dark is
+   set for the same reason - so native controls (the time input's picker
+   icon, the checkbox) render legibly against black regardless of the
+   visitor's chosen theme. */
+.hk-tab2-panel {
+  --bg: #0e0e0d;              /* Forage Black */
+  --card: #1c1c1a;            /* Deep Charcoal */
+  --card-alt: #262624;        /* Near Black */
+  --text: rgba(237, 233, 224, 0.88);
+  --text-strong: #ede9e0;
+  --accent-text: #c8a96e;     /* Ember Gold, hardcoded - see comment above */
+  --border-hint: rgba(200, 169, 110, 0.12);
+  --state-hover: rgba(200, 169, 110, 0.08);
+  --state-focus: rgba(200, 169, 110, 0.12);
+  --state-press: rgba(200, 169, 110, 0.16);
+  background: var(--bg); color-scheme: dark;
+  min-height: 100vh;
+}
+.hk-tab2-canvas { min-height: 600px; }
+
+/* ---------- Supplement card (Phase 0 only - supplement-card.ts: a time the
+   user sets, a "taken today" checkbox, nothing else - no slider, no
+   drag-and-drop, no rules engine, no status effects, no graph). ---------- */
+.hk-supplement-card { display: flex; flex-direction: column; gap: var(--space-3); }
+.hk-supplement-time-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  font-size: 12.5px; color: var(--text); cursor: pointer;
+}
+.hk-supplement-time-input {
+  background: var(--card-alt); border: 1px solid var(--border-hint); border-radius: var(--radius-sm);
+  color: var(--text-strong); font-family: var(--font-mono); font-size: 12.5px; padding: 6px 8px;
+}
+.hk-supplement-time-input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
+.hk-supplement-note { font-size: 11px; color: var(--stone); line-height: 1.5; }
+.hk-supplement-check-row {
+  display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); cursor: pointer;
+  padding-top: var(--space-2); border-top: 1px solid var(--border-hint);
+}
+.hk-supplement-check-row input { accent-color: var(--accent-text); flex-shrink: 0; width: 15px; height: 15px; }
+
+/* ---------- Reminder toast (reminder.ts) - page-level, stacks bottom-right,
+   same visual language as .hk-lock-toast/.hk-drawer (card-alt surface,
+   accent border, .hk-close reused unmodified - see its own rule above).
+   The container's own pointer-events are disabled so its unused space
+   never blocks clicks on whatever's underneath; only actual toasts (sized
+   to their own content) re-enable it. Plain column direction + bottom-
+   anchored container means each newly-appended toast lands nearest the
+   anchor point and earlier ones get pushed upward - no reverse needed. ---------- */
+.hk-reminder-toast-container {
+  position: fixed; bottom: 25px; right: 25px; z-index: 100;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  max-width: 320px; pointer-events: none;
+}
+.hk-reminder-toast {
+  position: relative; pointer-events: auto;
+  background: var(--card-alt); border: 1px solid var(--accent-text); border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-6) var(--space-4) var(--space-4);
+  box-shadow: var(--elevation-4); font-size: 12.5px; color: var(--text); font-family: var(--font-body);
+  animation: hk-rise-in var(--duration-medium) var(--ease-emphasized-decel) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root { --duration-short: 0.01ms; --duration-medium: 0.01ms; }
-  .hk-widget, .hk-drawer.active, .hk-lock-toast.active { animation: none; }
+  .hk-widget, .hk-drawer.active, .hk-lock-toast.active, .hk-reminder-toast { animation: none; }
   .hk-particles, .hk-starchase, .hk-sakura, .hk-fireworks { display: none; }
   .hk-mascot-falling { animation: none; }
   .hk-dog, .hk-dog-hop { animation: none; }
