@@ -71,10 +71,11 @@
        GitHub profile page). Avatar is a generated 8-bit-style portrait
        (src/dashboard/avatar.ts) - hover/focus darkens it and reveals "click to
        regenerate" (hk-avatar-overlay, styles.css); a click swaps in a new one
-       and remembers it for next visit. -->
+       and remembers it for next visit. Press and hold (2026-08-03, direct
+       request) rapid-cycles through avatars until released. -->
   <div class="hk-profile-header">
-    <div class="hk-avatar-wrap" id="hk-avatar-wrap" tabindex="0" role="button" aria-label="Regenerate profile picture">
-      <div class="hk-avatar-overlay">Click to<br>regenerate</div>
+    <div class="hk-avatar-wrap" id="hk-avatar-wrap" tabindex="0" role="button" aria-label="Regenerate profile picture. Press and hold to cycle rapidly.">
+      <div class="hk-avatar-overlay">Click to<br>regenerate<br>Hold to cycle</div>
     </div>
     <div class="hk-profile-body">
       <!-- Editable header (2026-08-03, direct request: "editable upon

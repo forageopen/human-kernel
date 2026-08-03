@@ -2,7 +2,17 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02/03 (second through fifteenth passes, spanning v0.1.0-mvd)
+## [Unreleased] - 2026-08-02/03 (second through sixteenth passes, spanning v0.1.0-mvd)
+
+### Added (sixteenth pass - press-and-hold rapid-cycle on the profile avatar)
+
+Direct feedback: "profile pic 'click to regenerate' - if press & hold, it cycles rapidly until the user stops clicking it." A plain click still regenerates exactly once, unchanged from the original behavior - the hold is additive, not a replacement.
+
+- **`avatar.ts`'s `wireAvatar`**: `pointerdown` arms a 350ms hold-delay timer; if released before it fires, the press falls through untouched to the existing plain-click path (one regenerate). If held past 350ms, the timer fires once (`didCycle = true`, one regenerate) and starts a `setInterval` regenerating every 100ms until `pointerup`/`pointerleave`/`pointercancel` clears it. The click event that follows a real pointerup checks `didCycle` and skips its own regenerate when the hold already ran, so a single physical press never double-fires (one from the hold, one from the click). Keyboard activation (Enter/Space) is untouched - still exactly one regenerate.
+- **`index.html`**: overlay copy gained a third line ("Hold to cycle"); `aria-label` now names both interactions for screen-reader users who can't see the hover overlay.
+- 5 new tests in `avatar.test.ts` covering: a short press behaving like a plain click, sustained holding producing multiple distinct specs before release, `pointerleave`/`pointercancel` both stopping the cycle, and keyboard activation staying a single regenerate.
+
+348 tests passing (up from 343), typecheck/build clean.
 
 ### Added (fifteenth pass - Founder Override: start/countdown mechanic for L-Theanine only)
 

@@ -6,6 +6,12 @@
 // canvas. Colors are drawn only from the Forage-tinted palette already in
 // styles.css (never pure black/white, per FDMAI-BRAND-001's color rule -
 // Charcoal Mist stands in for "black" here).
+//
+// Second pass (2026-08-03, direct request: "if press & hold, it cycles
+// rapidly until the user stops clicking it"): wireAvatar's interaction
+// grew a press-and-hold rapid-cycle on top of the original single-click
+// regenerate, see its own header comment below for how the two coexist
+// without double-firing on a plain click.
 
 const GRID = 12; // 12x12 pixel grid
 const PX = 8; // each grid cell renders as an 8x8 SVG unit -> 96x96 viewBox
@@ -141,11 +147,24 @@ export function saveAvatarSpec(spec: AvatarSpec): void {
   }
 }
 
+const HOLD_DELAY_MS = 350; // press-and-hold threshold before rapid-cycling kicks in
+const CYCLE_INTERVAL_MS = 100; // rapid-cycle rate once holding (2026-08-03, direct request: "if press & hold, it cycles rapidly until the user stops")
+
 /** Wires the avatar into `wrap` (expected: .hk-avatar-wrap, with a
  * .hk-avatar-overlay sibling already in the markup per index.html - CSS
  * handles the hover-darken/"click to regenerate" text, this only handles
- * the image itself). Renders the stored/created spec immediately;
- * regenerates and persists a new one on click. */
+ * the image itself). Renders the stored/created spec immediately.
+ *
+ * Two interactions layer on the same `regenerate`:
+ * - A plain click (or Enter/Space) regenerates once - unchanged original
+ *   behavior.
+ * - A press held past HOLD_DELAY_MS starts rapid-cycling every
+ *   CYCLE_INTERVAL_MS until released (pointerup/leave/cancel), landing on
+ *   whichever spec was showing at release. A quick tap never reaches the
+ *   delay, so it falls through to the plain click path untouched - this is
+ *   what keeps a normal click a single regenerate instead of double-firing
+ *   (once from the hold path, once from click). `didCycle` is the flag that
+ *   tells the click handler "the hold already ran, don't add one more". */
 export function wireAvatar(wrap: HTMLElement): void {
   const render = (spec: AvatarSpec): void => {
     wrap.querySelector("svg")?.remove();
@@ -157,7 +176,45 @@ export function wireAvatar(wrap: HTMLElement): void {
     render(spec);
   };
   render(loadOrCreateAvatarSpec());
-  wrap.addEventListener("click", regenerate);
+
+  let holdTimeout: ReturnType<typeof setTimeout> | null = null;
+  let cycleInterval: ReturnType<typeof setInterval> | null = null;
+  let didCycle = false;
+
+  const stopHold = (): void => {
+    if (holdTimeout !== null) {
+      clearTimeout(holdTimeout);
+      holdTimeout = null;
+    }
+    if (cycleInterval !== null) {
+      clearInterval(cycleInterval);
+      cycleInterval = null;
+    }
+  };
+
+  wrap.addEventListener("pointerdown", () => {
+    stopHold(); // defensive - clears any stray timers from an interrupted previous press
+    didCycle = false;
+    holdTimeout = setTimeout(() => {
+      didCycle = true;
+      regenerate();
+      cycleInterval = setInterval(regenerate, CYCLE_INTERVAL_MS);
+    }, HOLD_DELAY_MS);
+  });
+  wrap.addEventListener("pointerup", stopHold);
+  wrap.addEventListener("pointerleave", stopHold);
+  wrap.addEventListener("pointercancel", stopHold);
+
+  wrap.addEventListener("click", () => {
+    if (didCycle) {
+      // The hold already regenerated repeatedly - the click firing on
+      // release is the same physical press, not a second one, so don't
+      // regenerate again on top of it.
+      didCycle = false;
+      return;
+    }
+    regenerate();
+  });
   wrap.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
