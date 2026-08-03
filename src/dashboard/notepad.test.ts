@@ -9,6 +9,7 @@ import {
   wireNotepad,
   HIGHLIGHT_COLORS,
   NO_HIGHLIGHT_COLOR,
+  toOpaqueTextColor,
 } from "./notepad.js";
 
 /** jsdom doesn't implement execCommand at all (a documented gap, not a
@@ -71,6 +72,35 @@ describe("notepad persistence", () => {
     saveHighlightColor("1", NO_HIGHLIGHT_COLOR);
     expect(loadHighlightColor("1")).toBe(NO_HIGHLIGHT_COLOR);
     expect(loadHighlightColor("1")).not.toBe(HIGHLIGHT_COLORS[0]);
+  });
+});
+
+describe("toOpaqueTextColor", () => {
+  // Regression coverage: execCommand's foreColor silently no-ops on any
+  // color with a non-1 alpha, and every theme's --text is defined as an
+  // alpha-channel rgba() - confirmed by directly comparing
+  // execCommand('foreColor', false, 'rgba(74, 20, 35, 0.82)') (no-op)
+  // against the same color with the alpha stripped (works) on the live
+  // deployed site. This is why de-selecting a highlight must never hand a
+  // raw computed color straight to execCommand.
+
+  it("strips the alpha channel from an rgba() string, keeping the same RGB values", () => {
+    expect(toOpaqueTextColor("rgba(74, 20, 35, 0.82)")).toBe("rgb(74, 20, 35)");
+  });
+
+  it("passes an already-opaque rgb() string through unchanged in shape", () => {
+    expect(toOpaqueTextColor("rgb(28, 28, 26)")).toBe("rgb(28, 28, 26)");
+  });
+
+  it("handles alpha values of 1 and 0 the same as any other alpha", () => {
+    expect(toOpaqueTextColor("rgba(0, 0, 0, 1)")).toBe("rgb(0, 0, 0)");
+    expect(toOpaqueTextColor("rgba(255, 255, 255, 0)")).toBe("rgb(255, 255, 255)");
+  });
+
+  it("falls back to the input unchanged for anything that doesn't match the expected shape", () => {
+    expect(toOpaqueTextColor("transparent")).toBe("transparent");
+    expect(toOpaqueTextColor("#1c1c1a")).toBe("#1c1c1a");
+    expect(toOpaqueTextColor("")).toBe("");
   });
 });
 
@@ -196,12 +226,24 @@ describe("wireNotepad", () => {
     execSpy.mockRestore();
   });
 
-  it("clicking the de-select swatch clears the highlight (transparent) and restores a REAL, concrete text color - not the CSS keyword 'inherit'", () => {
-    // Regression test: execCommand's foreColor does not reliably honor the
-    // CSS keyword "inherit" - live-checking this on the deployed site caught
-    // it baking in a literal rgba(0, 0, 0, 0) (fully transparent, invisible
-    // text) instead of removing the forced color. The fix reads the area's
-    // own computed color and passes that concrete value instead.
+  it("clicking the de-select swatch clears the highlight (transparent) and restores an OPAQUE, concrete text color - not 'inherit', not a raw alpha-channel rgba()", () => {
+    // Regression test, two rounds of live-checking on the deployed site:
+    // round 1 found execCommand's foreColor does not honor the CSS keyword
+    // "inherit" (baked in a literal rgba(0, 0, 0, 0) - invisible text);
+    // round 2 found it ALSO silently no-ops on the area's raw computed
+    // color, because every theme's --text is an alpha-channel rgba() and
+    // execCommand rejects any color with a non-1 alpha. toOpaqueTextColor
+    // strips that alpha before it ever reaches execCommand.
+    //
+    // Note on what this test can't cover: jsdom has no stylesheet loaded (no
+    // real browser here at all), so getComputedStyle(area).color here
+    // resolves to the CSS-wide "canvastext" system-color keyword, not the
+    // rgba() a real browser with styles.css applied would report - that
+    // real-browser shape is covered by toOpaqueTextColor's own describe
+    // block above instead. What THIS test verifies is the wiring: whatever
+    // getComputedStyle returns gets passed through toOpaqueTextColor before
+    // reaching execCommand, and it's never the literal "inherit" that broke
+    // things originally.
     stubExecCommandIfMissing();
     const execSpy = vi.spyOn(document, "execCommand").mockReturnValue(true);
     const { root, area, swatches, formatButtons } = renderNotepad("1");
@@ -213,7 +255,7 @@ describe("wireNotepad", () => {
     const foreColorCall = execSpy.mock.calls.find((c) => c[0] === "foreColor");
     expect(hiliteColorCall?.[2]).toBe("transparent");
     expect(foreColorCall?.[2]).not.toBe("inherit");
-    expect(foreColorCall?.[2]).toBe(getComputedStyle(area).color);
+    expect(foreColorCall?.[2]).toBe(toOpaqueTextColor(getComputedStyle(area).color));
     expect(swatches[0]?.classList.contains("active")).toBe(true);
     expect(loadHighlightColor("1")).toBe(NO_HIGHLIGHT_COLOR);
 

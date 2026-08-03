@@ -105,6 +105,21 @@ const FORMAT_COMMANDS: ReadonlyArray<{ command: string; label: string; glyph: st
   { command: "strikeThrough", label: "Strikethrough", glyph: "S", className: "hk-format-strike" },
 ];
 
+/** Strips the alpha channel from a computed rgb()/rgba() color string,
+ * returning a fully-opaque rgb(). See the de-select handler in wireNotepad
+ * for why this exists: execCommand's foreColor silently no-ops on any color
+ * with a non-1 alpha, and every theme's --text is defined with one. Pure and
+ * regex-based (getComputedStyle always serializes to rgb()/rgba(), per
+ * spec, in every browser this app targets - ADR-0003) rather than a real
+ * color-parsing library, since this one narrow case is all it needs to
+ * handle. Falls back to the input unchanged if it doesn't match the
+ * expected shape, rather than throwing. */
+export function toOpaqueTextColor(computed: string): string {
+  const match = computed.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/);
+  if (!match) return computed;
+  return `rgb(${match[1]}, ${match[2]}, ${match[3]})`;
+}
+
 function contentKey(id: string): string {
   return `hk-notepad-content-${id}`;
 }
@@ -258,18 +273,23 @@ export function wireNotepad(
       try {
         if (color === NO_HIGHLIGHT_COLOR) {
           // De-select: transparent removes the highlight background. For
-          // text color, execCommand's foreColor does NOT reliably honor the
-          // CSS keyword "inherit" - live-checking this on the deployed site
-          // caught it baking in a literal rgba(0, 0, 0, 0) (fully
-          // transparent, invisible text) instead of removing the forced
-          // color. Passing the area's actual computed color instead - a
-          // concrete rgb() value, which execCommand DOES handle correctly,
-          // same as it already does for HIGHLIGHT_TEXT_COLOR below - and
-          // reading it live means it's correct under whichever of the 3
-          // themes (dark/light/feminine) is currently active, no per-theme
-          // hardcoding needed.
+          // text color, two live-checking rounds on the deployed site found
+          // execCommand's foreColor to be doubly unreliable here: the CSS
+          // keyword "inherit" got baked in as a literal rgba(0, 0, 0, 0) -
+          // fully transparent, invisible text - and passing the area's own
+          // getComputedStyle(...).color directly turned out to silently
+          // no-op instead, because every one of this app's 3 themes defines
+          // --text as an ALPHA-channel rgba() (e.g. "rgba(74, 20, 35,
+          // 0.82)") and execCommand's foreColor rejects any color string
+          // with a non-1 alpha, confirmed by directly comparing
+          // execCommand('foreColor', false, 'rgba(74, 20, 35, 0.82)')
+          // (no-op) against the same color with the alpha stripped,
+          // 'rgb(74, 20, 35)' (works). toOpaqueTextColor below does exactly
+          // that stripping, so this stays theme-aware (no per-theme
+          // hardcoding) while only ever handing execCommand a color shape
+          // it actually accepts.
           document.execCommand("hiliteColor", false, "transparent");
-          document.execCommand("foreColor", false, getComputedStyle(area).color);
+          document.execCommand("foreColor", false, toOpaqueTextColor(getComputedStyle(area).color));
         } else {
           document.execCommand("hiliteColor", false, color);
           document.execCommand("foreColor", false, HIGHLIGHT_TEXT_COLOR);
