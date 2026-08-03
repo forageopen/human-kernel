@@ -29,6 +29,14 @@
 // reminder and keeping every checkbox honest across a KL midnight rollover,
 // regardless of which tab is currently showing.
 //
+// 2026-08-03 pass (third, Founder Override - see supplements.ts's header):
+// one supplement (L-Theanine, effectProfile "acute") gets a start-button/
+// live-countdown card instead of the plain time+checkbox one every other
+// supplement still uses - the branch below is on supplement.effectProfile,
+// not a hardcoded id, so reclassifying a supplement later is a data change,
+// not a code change. The same shared reminder.ts clock also drives the
+// countdown's live text and its own one-time completion toast.
+//
 // Wiring order still matters: page chrome (clock/particles/starchase/
 // sakura/fireworks/theme/avatar/mascot/dog/profile-name) has no dependency
 // on vault data and is wired immediately. The widget canvas is built next,
@@ -62,8 +70,13 @@ import { renderScenePanel, wireScenePanel, loadFireworkColorCount, type SceneCar
 import { renderQuoteWidget, wireQuoteWidget } from "./dashboard/quote-widget.js";
 import { renderTabBar, wireTabBar } from "./dashboard/tabs.js";
 import { SUPPLEMENTS } from "./dashboard/supplements.js";
-import { renderSupplementCard, wireSupplementCard } from "./dashboard/supplement-card.js";
-import { startReminders, type ReminderTarget } from "./dashboard/reminder.js";
+import {
+  renderSupplementCard,
+  wireSupplementCard,
+  renderAcuteSupplementCard,
+  wireAcuteSupplementCard,
+} from "./dashboard/supplement-card.js";
+import { startReminders, type ReminderTarget, type CountdownTarget } from "./dashboard/reminder.js";
 
 const root = document.getElementById("app");
 if (!root) {
@@ -372,28 +385,45 @@ const reminderToastEl = document.getElementById("hk-reminder-toast-container");
 if (tab2CanvasEl) {
   const supplementWidgets: WidgetHandle[] = [];
   const reminderTargets: ReminderTarget[] = [];
+  const countdownTargets: CountdownTarget[] = [];
 
   // First-time-visitor starting layout only, same convention as the Notes
   // layout above - dragging/resizing any card persists per-widget-id
-  // (draggable.ts) and overrides this on every later visit.
+  // (draggable.ts) and overrides this on every later visit. The acute
+  // card (currently just L-Theanine) gets a little extra starting height -
+  // its content (duration input + note + countdown + two buttons) runs
+  // longer than the baseline card's (time input + note + checkbox).
   const supplementLayout: Array<{ left: number; top: number }> = [
     { left: 0, top: 0 },
     { left: 290, top: 0 },
     { left: 580, top: 0 },
-    { left: 0, top: 260 },
-    { left: 290, top: 260 },
+    { left: 0, top: 280 },
+    { left: 290, top: 280 },
   ];
 
+  // Branch is on supplement.effectProfile, not a hardcoded id (2026-08-03,
+  // Founder Override - see supplements.ts's header) - reclassifying a
+  // supplement later is a data change in supplements.ts, not a code change
+  // here.
   SUPPLEMENTS.forEach((supplement, i) => {
     const pos = supplementLayout[i]!;
+    const isAcute = supplement.effectProfile === "acute";
     const widget = createWidget(tab2CanvasEl, `supplement-${supplement.id}`, supplement.name, {
-      defaultRect: { left: pos.left, top: pos.top, width: 270, height: 210 },
+      defaultRect: { left: pos.left, top: pos.top, width: 270, height: isAcute ? 260 : 210 },
     });
     supplementWidgets.push(widget);
-    const cardElements = renderSupplementCard();
-    widget.body.appendChild(cardElements.root);
-    wireSupplementCard(supplement, cardElements);
-    reminderTargets.push({ supplement, checkbox: cardElements.checkbox });
+
+    if (isAcute) {
+      const cardElements = renderAcuteSupplementCard(supplement);
+      widget.body.appendChild(cardElements.root);
+      wireAcuteSupplementCard(supplement, cardElements);
+      countdownTargets.push({ supplement, elements: cardElements });
+    } else {
+      const cardElements = renderSupplementCard(supplement);
+      widget.body.appendChild(cardElements.root);
+      wireSupplementCard(supplement, cardElements);
+      reminderTargets.push({ supplement, checkbox: cardElements.checkbox });
+    }
   });
 
   // Tab 2's own scene taskbar - same component/call shape as tab 1's above,
@@ -437,7 +467,10 @@ if (tab2CanvasEl) {
   // its own header for the full reasoning (foreground-only, at-most-once-
   // per-KL-day per supplement, keeps every checkbox honest across a
   // midnight rollover) - runs regardless of which tab is currently showing.
-  if (reminderToastEl) startReminders(reminderTargets, reminderToastEl);
+  // countdownTargets (the acute card(s)) piggybacks on this same clock -
+  // see reminder.ts's header for why that's the same tick rather than a
+  // second timer.
+  if (reminderToastEl) startReminders(reminderTargets, reminderToastEl, countdownTargets);
 }
 
 // ---- Vault-reactive dashboard: source banner/warnings/heatmap content,

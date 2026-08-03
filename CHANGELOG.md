@@ -2,7 +2,20 @@
 
 Notable changes to Human Kernel. Loosely follows [Keep a Changelog](https://keepachangelog.com/); pre-1.0, so versions are milestones, not stability guarantees.
 
-## [Unreleased] - 2026-08-02/03 (second through fourteenth passes, spanning v0.1.0-mvd)
+## [Unreleased] - 2026-08-02/03 (second through fifteenth passes, spanning v0.1.0-mvd)
+
+### Added (fifteenth pass - Founder Override: start/countdown mechanic for L-Theanine only)
+
+Direct feedback asked for a start button + live countdown against a per-supplement effectiveness duration ("start time, effectiveness (fill in yourself) with recommendation... then start button, and have countdown for each"). Named explicitly rather than silently built: this is functionally the Phase 2 status-effect/"Active" mechanic the rebuilt spec gated behind a two-week Phase-0 adherence read that hadn't happened yet. Flagged back before building; confirmed as a deliberate Founder Override, scoped narrowly - not a blanket reopening of Phase 2.
+
+Scope narrowed further before building anything: the five supplements don't share one effect profile. L-Theanine has a real acute onset/offset (the direct feedback's own example: "L-thenine effect is 5 half hour"). Creatine, Magnesium, Omega-3, and Vitamin D3+K2 are daily-baseline/cumulative supplements with no genuine "wears off" point - forcing a countdown number onto those would invent false precision, the same trap the disclaimer problem already caught once this feature. Confirmed with a direct question before writing any code; answer was to scope the countdown to L-Theanine only and leave the other four untouched.
+
+- **`supplements.ts` extended**: every `Supplement` now carries a short generic `info` blurb (shown on every card - "so have info for each card") and an `effectProfile` of `"acute"` or `"baseline"`. Only L-Theanine is `"acute"`, carrying a `recommendedDurationMinutes` (150 - the direct feedback's own figure). New pure functions: `loadEffectDurationMinutes`/`saveEffectDurationMinutes` (user-editable, defaults to the recommended figure), `loadStartedAt`/`saveStartedAt`/`clearStartedAt`, `remainingEffectMs`, `formatCountdown` (reads "Xh Ym remaining", or "Effect window ended" at zero).
+- **`supplement-card.ts` gained a second card variant**: `renderAcuteSupplementCard`/`wireAcuteSupplementCard`/`resyncAcuteSupplementCard` - an editable duration input, a Start button, and a countdown display that cycles through not-started → running (Start hidden, Cancel shown, duration input disabled) → finished ("Effect window ended", Start available again). Pressing Start also silently logs the supplement taken for the day (`saveTakenOn`), so adherence data stays comparable across all five cards despite the UI differing. The four baseline cards (`renderSupplementCard`/`wireSupplementCard`, unchanged mechanism) also gained the new info line.
+- **`reminder.ts`'s shared clock extended, not duplicated**: `startReminders` takes an optional third `countdownTargets` param: the same ~20s tick that already drives the baseline reminder checks now also refreshes the acute card's live countdown text and fires a one-time "effect window ended" toast/Notification the moment a running countdown crosses zero - same toast/Notification mechanism as the existing reminder, just a different trigger condition. No second timer.
+- **`main.ts`**: branches per-card on `supplement.effectProfile`, not a hardcoded id, so reclassifying a supplement later is a data change in `supplements.ts`, not a code change here.
+
+343 tests passing (up from 310), typecheck/build clean.
 
 ### Fixed (fourteenth pass - tab 2 theme, reminder-field wording)
 

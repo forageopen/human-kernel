@@ -1,12 +1,34 @@
-// Supplement card (2026-08-03, Cognitive Supplement Dashboard - Phase 0
-// only). Deliberately minimal, per the spec: a name (the card's own
-// createWidget title - see main.ts), a time the user sets themselves - no
-// suggested/default value, see supplements.ts's header for the disclaimer
-// reasoning behind that - and a "taken today" checkbox. Nothing else: no
-// time slider, no drag-and-drop, no rules engine, no status-effect UI, no
-// graph. All of that is explicitly Phase 1/2+ and not touched here.
+// Supplement card (2026-08-03, Cognitive Supplement Dashboard - Phase 0,
+// plus one named Founder Override - see supplements.ts's header for the
+// full reasoning on both). Two variants, dispatched by main.ts on
+// supplement.effectProfile:
+//   - renderSupplementCard/wireSupplementCard (BASELINE - creatine,
+//     magnesium, omega-3, vitamin D3+K2): unchanged Phase 0 mechanic - a
+//     name (the card's own createWidget title - see main.ts), an info
+//     line, a time the user sets themselves - no suggested/default value,
+//     see supplements.ts's header for the disclaimer reasoning - and a
+//     "taken today" checkbox. Nothing else.
+//   - renderAcuteSupplementCard/wireAcuteSupplementCard (ACUTE -
+//     L-Theanine only): the Founder Override mechanic - an info line, an
+//     editable effect-duration input (pre-filled with a recommended
+//     value), and a Start button that becomes a live countdown, then
+//     "Effect window ended", then Start again.
 
-import { loadSupplementTime, saveSupplementTime, loadTakenOn, saveTakenOn, currentKlDateKey, type Supplement } from "./supplements.js";
+import {
+  loadSupplementTime,
+  saveSupplementTime,
+  loadTakenOn,
+  saveTakenOn,
+  currentKlDateKey,
+  loadEffectDurationMinutes,
+  saveEffectDurationMinutes,
+  loadStartedAt,
+  saveStartedAt,
+  clearStartedAt,
+  remainingEffectMs,
+  formatCountdown,
+  type Supplement,
+} from "./supplements.js";
 
 export interface SupplementCardElements {
   root: HTMLElement;
@@ -15,11 +37,23 @@ export interface SupplementCardElements {
 }
 
 /** Builds one supplement's card body (to be placed inside a createWidget
- * instance - see main.ts). Plain markup only; no values are read/written
- * here yet, that's wireSupplementCard's job. */
-export function renderSupplementCard(): SupplementCardElements {
+ * instance - see main.ts). Takes `supplement` now (2026-08-03, second
+ * round) purely to render its static `info` line - everything else here
+ * is still plain markup with no values read/written until
+ * wireSupplementCard runs. This is the BASELINE card only (time+checkbox) -
+ * for the one acute supplement (L-Theanine), main.ts calls
+ * renderAcuteSupplementCard/wireAcuteSupplementCard below instead. */
+export function renderSupplementCard(supplement: Supplement): SupplementCardElements {
   const root = document.createElement("div");
   root.className = "hk-supplement-card";
+
+  // Generic descriptive line (2026-08-03, direct request: "so have info for
+  // each card") - not personalized advice, just what kind of supplement
+  // this is. Same line shown on the acute card below.
+  const info = document.createElement("div");
+  info.className = "hk-supplement-info";
+  info.textContent = supplement.info;
+  root.appendChild(info);
 
   // Labeled "Remind me at" rather than a bare "Time" (2026-08-03, direct
   // feedback: "mechanism okay, just the wording is not clear") - setting a
@@ -91,4 +125,140 @@ export function wireSupplementCard(supplement: Supplement, elements: SupplementC
  * others. */
 export function resyncSupplementCardCheckbox(supplement: Supplement, checkbox: HTMLInputElement, todayKey: string): void {
   checkbox.checked = loadTakenOn(supplement.id, todayKey);
+}
+
+// ---------------------------------------------------------------------
+// Acute variant (Founder Override - supplements.ts's header has the full
+// reasoning for why this exists and why it's scoped to effectProfile
+// "acute" supplements only, currently just L-Theanine).
+
+export interface AcuteSupplementCardElements {
+  root: HTMLElement;
+  durationInput: HTMLInputElement;
+  countdownEl: HTMLElement;
+  startButton: HTMLButtonElement;
+  cancelButton: HTMLButtonElement;
+}
+
+/** Builds the acute card body: an info line (same convention as the
+ * baseline card), an editable effect-duration input in minutes (pre-filled
+ * with supplement.recommendedDurationMinutes), a Start button, and a
+ * countdown display. Start/Cancel are both always in the DOM - which one
+ * is visible (native `hidden`) is decided by resyncAcuteSupplementCard
+ * below, not by adding/removing elements, so this stays consistent with
+ * how every other toggle-driven UI in this app works (e.g. .hk-widget-
+ * hidden). Plain markup only; wireAcuteSupplementCard reads/writes values. */
+export function renderAcuteSupplementCard(supplement: Supplement): AcuteSupplementCardElements {
+  const root = document.createElement("div");
+  root.className = "hk-supplement-card";
+
+  const info = document.createElement("div");
+  info.className = "hk-supplement-info";
+  info.textContent = supplement.info;
+  root.appendChild(info);
+
+  const durationRow = document.createElement("label");
+  durationRow.className = "hk-supplement-duration-row";
+  const durationLabelText = document.createElement("span");
+  durationLabelText.textContent = "Effectiveness (minutes)";
+  const durationInput = document.createElement("input");
+  durationInput.type = "number";
+  durationInput.min = "1";
+  durationInput.step = "5";
+  durationInput.className = "hk-supplement-duration-input";
+  durationRow.appendChild(durationLabelText);
+  durationRow.appendChild(durationInput);
+  root.appendChild(durationRow);
+
+  // Recommended value stated plainly (2026-08-03, direct request:
+  // "effectiveness (fill in yourself) with recommendation") - a generic,
+  // commonly-cited duration figure, not personalized timing advice (see
+  // supplements.ts's disclaimer note above it) - always editable, never
+  // locked, same "pre-filled but overridable" spirit as everything else.
+  const durationNote = document.createElement("div");
+  durationNote.className = "hk-supplement-note";
+  durationNote.textContent = supplement.recommendedDurationMinutes
+    ? `Recommended: ${supplement.recommendedDurationMinutes} min - edit if yours differs.`
+    : "Set how long the effect typically lasts for you.";
+  root.appendChild(durationNote);
+
+  const countdownEl = document.createElement("div");
+  countdownEl.className = "hk-supplement-countdown";
+  countdownEl.setAttribute("aria-live", "polite");
+  root.appendChild(countdownEl);
+
+  const actions = document.createElement("div");
+  actions.className = "hk-supplement-acute-actions";
+  const startButton = document.createElement("button");
+  startButton.type = "button";
+  startButton.className = "hk-supplement-start-btn";
+  startButton.textContent = "Start";
+  const cancelButton = document.createElement("button");
+  cancelButton.type = "button";
+  cancelButton.className = "hk-supplement-cancel-btn";
+  cancelButton.textContent = "Cancel";
+  actions.appendChild(startButton);
+  actions.appendChild(cancelButton);
+  root.appendChild(actions);
+
+  return { root, durationInput, countdownEl, startButton, cancelButton };
+}
+
+/** Loads the saved (or recommended-default) duration, wires the duration
+ * input to persist on change, wires Start/Cancel, and immediately renders
+ * whichever of the three states (not started / running / finished) is
+ * real. Pressing Start silently logs the supplement taken for today too
+ * (saveTakenOn) - see supplements.ts's header for why: starting the
+ * countdown IS the "I took it" action here, so adherence data stays
+ * comparable across all five cards despite the UI differing. */
+export function wireAcuteSupplementCard(supplement: Supplement, elements: AcuteSupplementCardElements): void {
+  const { durationInput, startButton, cancelButton } = elements;
+
+  durationInput.value = String(loadEffectDurationMinutes(supplement));
+  durationInput.addEventListener("change", () => {
+    const minutes = Number(durationInput.value);
+    if (Number.isFinite(minutes) && minutes > 0) {
+      saveEffectDurationMinutes(supplement.id, minutes);
+    }
+  });
+
+  startButton.addEventListener("click", () => {
+    saveStartedAt(supplement.id, Date.now());
+    saveTakenOn(supplement.id, currentKlDateKey(new Date()), true);
+    resyncAcuteSupplementCard(supplement, elements);
+  });
+
+  cancelButton.addEventListener("click", () => {
+    clearStartedAt(supplement.id);
+    resyncAcuteSupplementCard(supplement, elements);
+  });
+
+  resyncAcuteSupplementCard(supplement, elements);
+}
+
+/** Re-applies the real not-started/running/finished state onto the card -
+ * called once by wireAcuteSupplementCard and then every tick by
+ * reminder.ts's shared clock (same role as resyncSupplementCardCheckbox
+ * above, just for the countdown text and which button shows), so this card
+ * never runs a timer of its own. */
+export function resyncAcuteSupplementCard(supplement: Supplement, elements: AcuteSupplementCardElements): void {
+  const { durationInput, countdownEl, startButton, cancelButton } = elements;
+  const startedAt = loadStartedAt(supplement.id);
+
+  if (startedAt === null) {
+    durationInput.disabled = false;
+    countdownEl.textContent = "";
+    startButton.hidden = false;
+    cancelButton.hidden = true;
+    return;
+  }
+
+  const duration = loadEffectDurationMinutes(supplement);
+  const remaining = remainingEffectMs(startedAt, duration, Date.now());
+  countdownEl.textContent = formatCountdown(remaining);
+
+  const running = remaining > 0;
+  durationInput.disabled = running;
+  startButton.hidden = running;
+  cancelButton.hidden = !running;
 }

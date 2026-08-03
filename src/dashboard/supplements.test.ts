@@ -9,6 +9,13 @@ import {
   loadTakenOn,
   saveTakenOn,
   isReminderDue,
+  loadEffectDurationMinutes,
+  saveEffectDurationMinutes,
+  loadStartedAt,
+  saveStartedAt,
+  clearStartedAt,
+  remainingEffectMs,
+  formatCountdown,
 } from "./supplements.js";
 
 describe("SUPPLEMENTS", () => {
@@ -32,6 +39,25 @@ describe("SUPPLEMENTS", () => {
     const ids = SUPPLEMENTS.map((s) => s.id);
     expect(ids.every((id) => id.length > 0)).toBe(true);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("gives every supplement a non-empty info blurb", () => {
+    expect(SUPPLEMENTS.every((s) => s.info.length > 0)).toBe(true);
+  });
+
+  it("marks only L-Theanine as acute - the other four stay baseline (Founder Override scope)", () => {
+    const acute = SUPPLEMENTS.filter((s) => s.effectProfile === "acute").map((s) => s.id);
+    expect(acute).toEqual(["l-theanine"]);
+    const baseline = SUPPLEMENTS.filter((s) => s.effectProfile === "baseline").map((s) => s.id);
+    expect(baseline).toEqual(["creatine", "magnesium", "omega-3", "vitamin-d3-k2"]);
+  });
+
+  it("only the acute supplement has a recommendedDurationMinutes", () => {
+    const lTheanine = SUPPLEMENTS.find((s) => s.id === "l-theanine")!;
+    expect(lTheanine.recommendedDurationMinutes).toBe(150);
+    for (const s of SUPPLEMENTS.filter((s) => s.effectProfile === "baseline")) {
+      expect(s.recommendedDurationMinutes).toBeUndefined();
+    }
   });
 });
 
@@ -130,5 +156,92 @@ describe("isReminderDue", () => {
 
   it("stays due any time after the set time, until taken", () => {
     expect(isReminderDue("08:00", "23:59", false)).toBe(true);
+  });
+});
+
+describe("loadEffectDurationMinutes / saveEffectDurationMinutes", () => {
+  beforeEach(() => localStorage.clear());
+  const lTheanine = SUPPLEMENTS.find((s) => s.id === "l-theanine")!;
+  const creatine = SUPPLEMENTS.find((s) => s.id === "creatine")!;
+
+  it("defaults to the supplement's recommendedDurationMinutes before anything is saved", () => {
+    expect(loadEffectDurationMinutes(lTheanine)).toBe(150);
+  });
+
+  it("defaults to 0 for a supplement with no recommendedDurationMinutes", () => {
+    expect(loadEffectDurationMinutes(creatine)).toBe(0);
+  });
+
+  it("round-trips a user-saved value, overriding the recommended default", () => {
+    saveEffectDurationMinutes("l-theanine", 90);
+    expect(loadEffectDurationMinutes(lTheanine)).toBe(90);
+  });
+
+  it("falls back to the recommended default for garbage or non-positive stored values", () => {
+    localStorage.setItem("hk-supplement-duration-l-theanine", "not-a-number");
+    expect(loadEffectDurationMinutes(lTheanine)).toBe(150);
+    localStorage.setItem("hk-supplement-duration-l-theanine", "-10");
+    expect(loadEffectDurationMinutes(lTheanine)).toBe(150);
+  });
+});
+
+describe("loadStartedAt / saveStartedAt / clearStartedAt", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("defaults to null - no countdown running until Start is pressed", () => {
+    expect(loadStartedAt("l-theanine")).toBeNull();
+  });
+
+  it("round-trips a saved start timestamp", () => {
+    saveStartedAt("l-theanine", 1_700_000_000_000);
+    expect(loadStartedAt("l-theanine")).toBe(1_700_000_000_000);
+  });
+
+  it("clearStartedAt resets it back to null", () => {
+    saveStartedAt("l-theanine", 1_700_000_000_000);
+    clearStartedAt("l-theanine");
+    expect(loadStartedAt("l-theanine")).toBeNull();
+  });
+
+  it("keeps each supplement's started-at independent", () => {
+    saveStartedAt("l-theanine", 1_700_000_000_000);
+    expect(loadStartedAt("creatine")).toBeNull();
+  });
+});
+
+describe("remainingEffectMs", () => {
+  it("returns the full duration when just started", () => {
+    expect(remainingEffectMs(1_000_000, 150, 1_000_000)).toBe(150 * 60_000);
+  });
+
+  it("counts down as time elapses", () => {
+    const startedAt = 1_000_000;
+    const oneHourLaterMs = startedAt + 60 * 60_000;
+    expect(remainingEffectMs(startedAt, 150, oneHourLaterMs)).toBe(90 * 60_000); // 150min - 60min = 90min left
+  });
+
+  it("floors at 0 once the full duration has elapsed - never goes negative", () => {
+    const startedAt = 1_000_000;
+    const wayLaterMs = startedAt + 999 * 60_000;
+    expect(remainingEffectMs(startedAt, 150, wayLaterMs)).toBe(0);
+  });
+});
+
+describe("formatCountdown", () => {
+  it("shows hours and minutes when an hour or more remains", () => {
+    expect(formatCountdown(150 * 60_000)).toBe("2h 30m remaining");
+  });
+
+  it("shows just minutes when under an hour remains", () => {
+    expect(formatCountdown(45 * 60_000)).toBe("45m remaining");
+  });
+
+  it("rounds up to the next minute rather than showing 0m while time is technically left", () => {
+    expect(formatCountdown(30_000)).toBe("1m remaining"); // 30 seconds left
+  });
+
+  it("reads \"Effect window ended\" at exactly zero and below", () => {
+    expect(formatCountdown(0)).toBe("Effect window ended");
+    expect(formatCountdown(-5000)).toBe("Effect window ended");
   });
 });

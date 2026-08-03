@@ -877,6 +877,10 @@ body {
    user sets, a "taken today" checkbox, nothing else - no slider, no
    drag-and-drop, no rules engine, no status effects, no graph). ---------- */
 .hk-supplement-card { display: flex; flex-direction: column; gap: var(--space-3); }
+.hk-supplement-info {
+  font-size: 11.5px; color: var(--text); line-height: 1.5;
+  padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-hint);
+}
 .hk-supplement-time-row {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
   font-size: 12.5px; color: var(--text); cursor: pointer;
@@ -892,6 +896,36 @@ body {
   padding-top: var(--space-2); border-top: 1px solid var(--border-hint);
 }
 .hk-supplement-check-row input { accent-color: var(--accent-text); flex-shrink: 0; width: 15px; height: 15px; }
+
+/* ---------- Acute supplement card variant (Founder Override - currently
+   only L-Theanine's card uses these; see supplements.ts's header). ---------- */
+.hk-supplement-duration-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  font-size: 12.5px; color: var(--text); cursor: pointer;
+}
+.hk-supplement-duration-input {
+  background: var(--card-alt); border: 1px solid var(--border-hint); border-radius: var(--radius-sm);
+  color: var(--text-strong); font-family: var(--font-mono); font-size: 12.5px; padding: 6px 8px; width: 70px;
+}
+.hk-supplement-duration-input:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text); }
+.hk-supplement-duration-input:disabled { opacity: 0.6; cursor: not-allowed; }
+.hk-supplement-countdown {
+  font-family: var(--font-mono); font-size: 13px; color: var(--accent-text);
+  font-variant-numeric: tabular-nums; min-height: 1.2em;
+}
+.hk-supplement-acute-actions { display: flex; gap: var(--space-2); }
+.hk-supplement-start-btn, .hk-supplement-cancel-btn {
+  flex: 1; padding: 7px var(--space-3); border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 12px; font-family: var(--font-heading);
+  transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
+}
+.hk-supplement-start-btn { background: transparent; border: 1px solid var(--accent-text); color: var(--accent-text); }
+.hk-supplement-start-btn:hover { background: var(--state-hover); }
+.hk-supplement-cancel-btn { background: transparent; border: 1px solid var(--border-hint); color: var(--stone); }
+.hk-supplement-cancel-btn:hover { border-color: var(--crimson); color: var(--crimson); }
+.hk-supplement-start-btn:focus-visible, .hk-supplement-cancel-btn:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px var(--state-focus), 0 0 0 1px var(--accent-text);
+}
 
 /* ---------- Reminder toast (reminder.ts) - page-level, stacks bottom-right,
    same visual language as .hk-lock-toast/.hk-drawer (card-alt surface,
