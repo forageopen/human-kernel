@@ -23,6 +23,10 @@
 // their next visit - it never replays the fall animation on page load,
 // only on an actual release after a drag.
 
+import { renderPixelSvg, type Pixel } from "./pixel-svg.js";
+import { prefersReducedMotion } from "./dom-utils.js";
+import { getJSON, setJSON } from "./storage.js";
+
 const GRID = 12;
 const PX = 8;
 const BODY = "#8b7ec8"; // soft purple - a deliberate one-off outside the
@@ -31,8 +35,6 @@ const BODY = "#8b7ec8"; // soft purple - a deliberate one-off outside the
 // not used anywhere else, and never for text or brand-identity surfaces.
 const BODY_SHADE = "#5f4f96"; // darker purple for a touch of shading/depth
 const EYE_DARK = "#2a2a28"; // Charcoal Mist - same "not pure black" rule as avatar.ts
-
-type Pixel = readonly [row: number, col: number, color: string];
 
 function bodyPixels(): Pixel[] {
   const px: Pixel[] = [];
@@ -80,22 +82,7 @@ function smilePixels(): Pixel[] {
 export function renderMascotSvg(eyeState: "normal" | "squint" = "normal"): string {
   const pixels: Pixel[] = [...bodyPixels(), ...eyePixels(eyeState), ...smilePixels()];
 
-  const merged = new Map<string, string>();
-  for (const [r, c, color] of pixels) {
-    if (r < 0 || r >= GRID || c < 0 || c >= GRID) continue;
-    merged.set(`${r},${c}`, color);
-  }
-
-  const rects = Array.from(merged.entries())
-    .map(([key, color]) => {
-      const parts = key.split(",");
-      const r = Number(parts[0]);
-      const c = Number(parts[1]);
-      return `<rect x="${c * PX}" y="${r * PX}" width="${PX}" height="${PX}" fill="${color}"/>`;
-    })
-    .join("");
-
-  return `<svg viewBox="0 0 ${GRID * PX} ${GRID * PX}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A small purple mascot">${rects}</svg>`;
+  return renderPixelSvg(pixels, GRID, GRID, PX, "A small purple mascot");
 }
 
 const POSITION_KEY = "hk-mascot-position";
@@ -106,30 +93,11 @@ interface MascotPosition {
 }
 
 export function loadMascotPosition(): MascotPosition | null {
-  try {
-    const raw = localStorage.getItem(POSITION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as MascotPosition;
-  } catch {
-    return null;
-  }
+  return getJSON<MascotPosition | null>(POSITION_KEY, null);
 }
 
 export function saveMascotPosition(pos: MascotPosition): void {
-  try {
-    localStorage.setItem(POSITION_KEY, JSON.stringify(pos));
-  } catch {
-    // no persistence available this session - the mascot still works, it
-    // just resets to the default corner on the next reload.
-  }
-}
-
-function prefersReducedMotion(): boolean {
-  try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
+  setJSON(POSITION_KEY, pos);
 }
 
 /** Wires the mascot into `el` (expected: a `position:fixed` .hk-mascot

@@ -18,6 +18,8 @@
 // taskbar's one slider speeds up or slows down both background layers
 // together.
 
+import { initAmbientField } from "./ambient-field.js";
+
 const DEFAULT_COUNT_PER_GROUP = 5;
 
 interface StarSpec {
@@ -63,13 +65,11 @@ function applySpec(el: HTMLElement, spec: StarSpec): void {
  * total). Idempotent, same as initParticles - clears and re-randomizes
  * rather than piling up on repeated calls. */
 export function initStarChase(container: HTMLElement, countPerGroup: number = DEFAULT_COUNT_PER_GROUP): void {
-  container.innerHTML = "";
-  for (const group of ["a", "b"] as const) {
-    for (let i = 0; i < countPerGroup; i++) {
-      const el = document.createElement("span");
-      el.className = "hk-starchase-streak";
-      applySpec(el, randomStar(group));
-      container.appendChild(el);
-    }
-  }
+  initAmbientField(
+    container,
+    countPerGroup * 2,
+    "hk-starchase-streak",
+    (i) => randomStar(i < countPerGroup ? "a" : "b"),
+    applySpec,
+  );
 }

@@ -23,6 +23,8 @@
 // slider can speed up or slow down every particle at once just by writing
 // one variable on <html> - this file never needs to know speed exists at all.
 
+import { initAmbientField } from "./ambient-field.js";
+
 const DEFAULT_COUNT = 22;
 
 interface ParticleSpec {
@@ -71,11 +73,5 @@ function applySpec(el: HTMLElement, spec: ParticleSpec): void {
  * No timers, no RAF loop - Math.random() runs once per element, then the
  * CSS animation referenced by .hk-particle takes over entirely. */
 export function initParticles(container: HTMLElement, count: number = DEFAULT_COUNT): void {
-  container.innerHTML = "";
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement("span");
-    el.className = "hk-particle";
-    applySpec(el, randomSpec());
-    container.appendChild(el);
-  }
+  initAmbientField(container, count, "hk-particle", randomSpec, applySpec);
 }

@@ -63,6 +63,8 @@
 // Founder Override above is scoped narrowly to one countdown mechanic on
 // one card, not a blanket "Phase 2 is open now."
 
+import { klDateTimeParts, getPart, klYearMonthDay } from "./kl-time.js";
+
 export interface Supplement {
   id: string;
   name: string;
@@ -120,37 +122,23 @@ export const SUPPLEMENTS: readonly Supplement[] = [
 
 // Same convention as clock.ts - Asia/Kuala_Lumpur regardless of the
 // visitor's own device timezone, computed via Intl.DateTimeFormat rather
-// than new Date().getHours() etc.
-const KL_TIMEZONE = "Asia/Kuala_Lumpur";
+// than new Date().getHours() etc. Shared plumbing lives in kl-time.ts.
 
 /** "HH:MM" in Asia/Kuala_Lumpur for the given instant - 24-hour, zero-padded,
  * so it string-compares correctly and matches <input type="time">'s own
  * value format directly (no parsing needed on either side). */
 export function currentKlTime(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: KL_TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-  const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === type)?.value ?? "00";
+  const parts = klDateTimeParts(date, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }, "en-GB");
+  const get = (type: Intl.DateTimeFormatPartTypes): string => getPart(parts, type, "00");
   return `${get("hour")}:${get("minute")}`;
 }
 
 /** "YYYY-MM-DD" in Asia/Kuala_Lumpur - the calendar day a "taken today"
  * checkbox actually belongs to, independent of the visitor's own device
- * timezone (same reasoning as clock.ts's formatKlDateTime). en-CA happens
- * to format in YYYY-MM-DD order already, so no manual reassembly needed
- * beyond pulling the three parts. */
+ * timezone (same reasoning as clock.ts's formatKlDateTime). */
 export function currentKlDateKey(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: KL_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
+  const { year, month, day } = klYearMonthDay(date);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function timeKey(id: string): string {

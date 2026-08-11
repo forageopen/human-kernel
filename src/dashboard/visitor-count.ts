@@ -28,7 +28,7 @@
 // anyway would oversell a client-only simulation as something more than it
 // is. MVD: the two numbers asked for, honestly labeled, nothing more.
 
-const KL_TIMEZONE = "Asia/Kuala_Lumpur";
+import { klYearMonthDay } from "./kl-time.js";
 
 const TOTAL_KEY = "hk-visitor-total";
 const WEEK_KEY_KEY = "hk-visitor-week-key";
@@ -51,17 +51,7 @@ function randomInt(min: number, max: number): number {
  * visitor's own device timezone. Once reduced to a plain local Y/M/D,
  * ISO-week math needs no further timezone handling. */
 export function currentKlWeekKey(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: KL_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === type)?.value ?? "0";
-
-  const y = Number(get("year"));
-  const m = Number(get("month"));
-  const d = Number(get("day"));
+  const { year: y, month: m, day: d } = klYearMonthDay(date);
 
   // Standard ISO-8601 week-number algorithm on a UTC-anchored date built
   // from the already-KL-local Y/M/D - the UTC anchor here is just a plain

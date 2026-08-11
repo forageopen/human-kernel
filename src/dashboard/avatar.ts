@@ -13,14 +13,15 @@
 // regenerate, see its own header comment below for how the two coexist
 // without double-firing on a plain click.
 
+import { renderPixelSvg, type Pixel } from "./pixel-svg.js";
+import { getJSON, setJSON } from "./storage.js";
+
 const GRID = 12; // 12x12 pixel grid
 const PX = 8; // each grid cell renders as an 8x8 SVG unit -> 96x96 viewBox
 
 const SKIN_TONES = ["#c8a96e", "#7a8c6e", "#b0ada4", "#d5aaaa", "#aad5d4", "#aaaad5"];
 const DARK = "#2a2a28"; // Charcoal Mist - the brand-safe stand-in for "black"
 const LIP = "#c1286b"; // Rose Crimson
-
-type Pixel = readonly [row: number, col: number, color: string];
 
 function basePixels(skin: string): Pixel[] {
   const px: Pixel[] = [];
@@ -107,44 +108,21 @@ export function renderAvatarSvg(spec: AvatarSpec): string {
   if (spec.lipstick) pixels = pixels.concat(lipstickPixels());
   if (spec.bowtie) pixels = pixels.concat(bowtiePixels());
 
-  const merged = new Map<string, string>();
-  for (const [r, c, color] of pixels) {
-    if (r < 0 || r >= GRID || c < 0 || c >= GRID) continue;
-    merged.set(`${r},${c}`, color);
-  }
-
-  const rects = Array.from(merged.entries())
-    .map(([key, color]) => {
-      const parts = key.split(",");
-      const r = Number(parts[0]);
-      const c = Number(parts[1]);
-      return `<rect x="${c * PX}" y="${r * PX}" width="${PX}" height="${PX}" fill="${color}"/>`;
-    })
-    .join("");
-
-  return `<svg viewBox="0 0 ${GRID * PX} ${GRID * PX}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Generated avatar">${rects}</svg>`;
+  return renderPixelSvg(pixels, GRID, GRID, PX, "Generated avatar");
 }
 
 const STORAGE_KEY = "hk-avatar-spec";
 
 export function loadOrCreateAvatarSpec(): AvatarSpec {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as AvatarSpec;
-  } catch {
-    // fall through to creating + saving a fresh one
-  }
+  const stored = getJSON<AvatarSpec | null>(STORAGE_KEY, null);
+  if (stored) return stored;
   const spec = randomAvatarSpec();
   saveAvatarSpec(spec);
   return spec;
 }
 
 export function saveAvatarSpec(spec: AvatarSpec): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(spec));
-  } catch {
-    // no persistence available - avatar still renders for this session
-  }
+  setJSON(STORAGE_KEY, spec);
 }
 
 const HOLD_DELAY_MS = 350; // press-and-hold threshold before rapid-cycling kicks in

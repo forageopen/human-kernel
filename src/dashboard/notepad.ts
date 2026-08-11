@@ -68,6 +68,8 @@
 //      row scrolls horizontally instead of wrapping (styles.css) - same
 //      overflow-x pattern already used for the heatmap's week columns.
 
+import { evenlySpacedHues } from "./color-utils.js";
+
 const LEGACY_CONTENT_KEY = "hk-notepad-content";
 const LEGACY_COLOR_KEY = "hk-notepad-color";
 const HIGHLIGHT_TEXT_COLOR = "#1c1c1a"; // Deep Charcoal - dark on every swatch, both app themes
@@ -85,12 +87,11 @@ const HIGHLIGHT_LIGHTNESS = 78;
 /** HIGHLIGHT_COLOR_COUNT evenly-spaced pastel hues, as ready-to-use `hsl()`
  * strings. Pure and deterministic. */
 function buildHighlightPalette(count: number): string[] {
-  const colors: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const hue = (HIGHLIGHT_HUE_START + Math.round((360 / count) * i)) % 360;
-    colors.push(`hsl(${hue}, ${HIGHLIGHT_SATURATION}%, ${HIGHLIGHT_LIGHTNESS}%)`);
-  }
-  return colors;
+  return evenlySpacedHues(count, {
+    hueOffset: HIGHLIGHT_HUE_START,
+    saturation: HIGHLIGHT_SATURATION,
+    lightness: HIGHLIGHT_LIGHTNESS,
+  });
 }
 
 export const HIGHLIGHT_COLORS: readonly string[] = buildHighlightPalette(HIGHLIGHT_COLOR_COUNT);

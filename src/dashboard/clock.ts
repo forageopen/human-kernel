@@ -11,7 +11,7 @@
 // of the machine running the test; startLiveClock is the thin, timer-owning
 // side effect on top of it.
 
-const KL_TIMEZONE = "Asia/Kuala_Lumpur";
+import { klDateTimeParts, getPart } from "./kl-time.js";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -24,8 +24,7 @@ const MONTH_NAMES = [
  * clock that renders midnight/noon as 12, not 0 - the dayPeriod part
  * (AM/PM) comes along automatically once hourCycle is h11/h12. */
 export function formatKlDateTime(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: KL_TIMEZONE,
+  const parts = klDateTimeParts(date, {
     year: "numeric",
     month: "numeric",
     day: "numeric",
@@ -33,9 +32,9 @@ export function formatKlDateTime(date: Date): string {
     minute: "2-digit",
     second: "2-digit",
     hourCycle: "h12",
-  }).formatToParts(date);
+  });
 
-  const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((p) => p.type === type)?.value ?? "";
+  const get = (type: Intl.DateTimeFormatPartTypes): string => getPart(parts, type);
 
   const monthNum = Number(get("month"));
   const day = get("day");

@@ -30,6 +30,8 @@
 // is 16 (4 PM), not 15, so all 24 hours resolve to exactly one window.
 // Flagged here rather than silently smoothed over.
 
+import { klHour } from "./kl-time.js";
+
 export interface TimeWindow {
   name: string;
   startHour: number; // 0-23, local Kuala Lumpur time
@@ -82,15 +84,6 @@ export const WINDOWS: TimeWindow[] = [
     poorFor: "Locking in consequential decisions or retaining dense new material - the mind is oriented toward wandering, not encoding.",
   },
 ];
-
-function klHour(now: Date): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Kuala_Lumpur",
-    hour: "numeric",
-    hourCycle: "h23",
-  }).formatToParts(now);
-  return Number(parts.find((p) => p.type === "hour")?.value ?? 0);
-}
 
 export function currentWindow(now: Date = new Date(), windows: TimeWindow[] = WINDOWS): TimeWindow {
   const hour = klHour(now);

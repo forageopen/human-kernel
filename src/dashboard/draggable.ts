@@ -7,6 +7,8 @@
 // survives a reload; first-time visitors get whatever default the CSS/
 // inline styles already set.
 
+import { getJSON, setJSON } from "./storage.js";
+
 export interface Rect {
   left: number;
   top: number;
@@ -19,21 +21,11 @@ function storageKey(id: string): string {
 }
 
 export function loadRect(id: string): Rect | null {
-  try {
-    const raw = localStorage.getItem(storageKey(id));
-    if (!raw) return null;
-    return JSON.parse(raw) as Rect;
-  } catch {
-    return null;
-  }
+  return getJSON<Rect | null>(storageKey(id), null);
 }
 
 export function saveRect(id: string, rect: Rect): void {
-  try {
-    localStorage.setItem(storageKey(id), JSON.stringify(rect));
-  } catch {
-    // no persistence available this session
-  }
+  setJSON(storageKey(id), rect);
 }
 
 /** Applies a stored rect (if any) to `el` as inline styles. Returns whether

@@ -18,6 +18,9 @@
 // full spread, and everything in between stays visually coherent) rather
 // than a hand-picked list of 24 specific colors.
 
+import { prefersReducedMotion } from "./dom-utils.js";
+import { evenlySpacedHues } from "./color-utils.js";
+
 export const MIN_COLORS = 1;
 export const MAX_COLORS = 24;
 
@@ -37,21 +40,9 @@ export function clampColorCount(n: number): number {
  * only the hue spacing changes with `count`. */
 export function paletteForCount(count: number): string[] {
   const n = clampColorCount(count);
-  const colors: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const hue = Math.round((360 / n) * i);
-    colors.push(`hsl(${hue}, 78%, 62%)`);
-  }
-  return colors;
+  return evenlySpacedHues(n, { saturation: 78, lightness: 62 });
 }
 
-function prefersReducedMotion(): boolean {
-  try {
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
-}
 
 function pickColor(colorCount: number): string {
   const palette = paletteForCount(colorCount);

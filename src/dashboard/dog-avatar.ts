@@ -24,6 +24,8 @@
 // loadVisible/saveVisible and the shared .hk-widget-hidden class, exactly
 // like the mascot - this file has no visibility logic of its own.
 
+import { renderPixelSvg, type Pixel } from "./pixel-svg.js";
+
 const GRID_W = 16;
 const GRID_H = 10;
 const PX = 4;
@@ -33,8 +35,6 @@ const BODY = "#a8703f"; // warm brown - a dog-like tone, same "not pure
 const BODY_SHADE = "#7d5230"; // darker brown, underside shading
 const DARK = "#5c3b1e"; // ear/tail tip
 const EYE = "#2a2a28"; // Charcoal Mist, same dark used by avatar.ts/mascot.ts
-
-type Pixel = readonly [row: number, col: number, color: string];
 
 function bodyPixels(): Pixel[] {
   const px: Pixel[] = [];
@@ -72,22 +72,7 @@ function eyePixels(): Pixel[] {
 export function renderDogSvg(): string {
   const pixels: Pixel[] = [...bodyPixels(), ...eyePixels()];
 
-  const merged = new Map<string, string>();
-  for (const [r, c, color] of pixels) {
-    if (r < 0 || r >= GRID_H || c < 0 || c >= GRID_W) continue;
-    merged.set(`${r},${c}`, color);
-  }
-
-  const rects = Array.from(merged.entries())
-    .map(([key, color]) => {
-      const parts = key.split(",");
-      const r = Number(parts[0]);
-      const c = Number(parts[1]);
-      return `<rect x="${c * PX}" y="${r * PX}" width="${PX}" height="${PX}" fill="${color}"/>`;
-    })
-    .join("");
-
-  return `<svg viewBox="0 0 ${GRID_W * PX} ${GRID_H * PX}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A small dog">${rects}</svg>`;
+  return renderPixelSvg(pixels, GRID_W, GRID_H, PX, "A small dog");
 }
 
 /** Wires the dog into `el` (expected: a `position:fixed` .hk-dog element

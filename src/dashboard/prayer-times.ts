@@ -24,6 +24,8 @@
 // at most once per calendar day and just re-renders the already-fetched
 // data every tick to update the "next prayer" highlight.
 
+import { KL_TIMEZONE } from "./kl-time.js";
+
 const ZONE = "WLY01"; // Kuala Lumpur / Putrajaya
 const API_BASE = "https://api.waktusolat.app/v2/solat";
 
@@ -130,7 +132,7 @@ export function nextAnchor(anchors: PrayerAnchor[], now: Date): PrayerAnchor | n
 
 export function formatKlTime(d: Date): string {
   return new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Kuala_Lumpur",
+    timeZone: KL_TIMEZONE,
     hour: "numeric",
     minute: "2-digit",
     hourCycle: "h12",

@@ -17,6 +17,8 @@
 // bare-number pattern), so the one scene-taskbar slider speeds up or slows
 // down all three background layers together.
 
+import { initAmbientField } from "./ambient-field.js";
+
 const DEFAULT_COUNT = 14;
 
 interface PetalSpec {
@@ -56,11 +58,5 @@ function applySpec(el: HTMLElement, spec: PetalSpec): void {
  * now that up to three ambient layers can run at once). Idempotent - clears
  * and re-randomizes rather than piling up on repeated calls. */
 export function initSakura(container: HTMLElement, count: number = DEFAULT_COUNT): void {
-  container.innerHTML = "";
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement("span");
-    el.className = "hk-sakura-petal";
-    applySpec(el, randomPetal());
-    container.appendChild(el);
-  }
+  initAmbientField(container, count, "hk-sakura-petal", randomPetal, applySpec);
 }
