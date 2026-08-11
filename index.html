@@ -57,6 +57,17 @@
      taskbar (main.ts), same mechanism as every card. -->
 <div class="hk-dog" id="hk-dog" aria-hidden="true"></div>
 
+<!-- Cat that chases the dog above (src/dashboard/cat.ts) - autonomous, not
+     draggable, tracks the dog's live on-screen position (which is itself
+     produced by the dog's CSS animation) and holds a small trailing
+     distance rather than ever overlapping it. -->
+<div class="hk-cat" id="hk-cat" aria-hidden="true"></div>
+
+<!-- Fourth roaming character: a small creeper-head (src/dashboard/creeper.ts)
+     - draggable like the mascot, but no hover/fall behavior, closer to the
+     profile avatar's simplicity. -->
+<div class="hk-creeper" id="hk-creeper" role="img" aria-label="A small creeper-head character - drag it around"></div>
+
 <div class="hk-shell">
 
   <div class="hk-ribbon">

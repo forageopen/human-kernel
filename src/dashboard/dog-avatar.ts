@@ -18,13 +18,21 @@
 // mascot's separate drag/fall handling, just split across the DOM instead of
 // across time. Same pixel-grid SVG technique as avatar.ts/mascot.ts.
 //
-// Not draggable, not clickable - "moving across screen" describes autonomous
-// motion, not something a visitor picks up. Visibility (the "avatar toggle
-// on off" request) is handled generically by main.ts via draggable.ts's
+// Draggable: picking the dog up (pointerdown) captures its current on-screen
+// spot, adds .hk-dog-dragging (which kills the crossing animation via CSS -
+// see styles.css), and switches to plain left/top for the drag, same
+// approach as the mascot's manual drag. There's no single meaningful
+// "resume from here" point on a full-width crossing loop, though, so on
+// release only the vertical spot (the "lane" it crosses at) carries over -
+// horizontal position resets to the animation's own path, restarting the
+// crossing fresh at the new lane. The lane persists (storage.ts) like every
+// other draggable's position. Visibility (the "avatar toggle on off"
+// request) is handled generically by main.ts via draggable.ts's
 // loadVisible/saveVisible and the shared .hk-widget-hidden class, exactly
 // like the mascot - this file has no visibility logic of its own.
 
 import { renderPixelSvg, type Pixel } from "./pixel-svg.js";
+import { getJSON, setJSON } from "./storage.js";
 
 const GRID_W = 16;
 const GRID_H = 10;
@@ -75,15 +83,71 @@ export function renderDogSvg(): string {
   return renderPixelSvg(pixels, GRID_W, GRID_H, PX, "A small dog");
 }
 
+const LANE_KEY = "hk-dog-lane-top";
+
 /** Wires the dog into `el` (expected: a `position:fixed` .hk-dog element
  * already in the DOM - index.html - carrying the horizontal-crossing
  * animation via CSS). Renders the sprite inside a `.hk-dog-hop` wrapper that
- * carries the independent vertical bounce. Idempotent - safe to call more
- * than once, clears any previous content first. */
+ * carries the independent vertical bounce, restores any saved lane, and
+ * wires up drag-to-relocate-lane. Idempotent - safe to call more than once,
+ * clears any previous content first. */
 export function wireDogAvatar(el: HTMLElement): void {
   el.innerHTML = "";
   const hop = document.createElement("div");
   hop.className = "hk-dog-hop";
   hop.innerHTML = renderDogSvg();
   el.appendChild(hop);
+
+  const savedLane = getJSON<number | null>(LANE_KEY, null);
+  if (savedLane !== null) {
+    el.style.top = `${savedLane}px`;
+    el.style.bottom = "auto";
+  }
+
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  el.addEventListener("pointerdown", (e) => {
+    const rect = el.getBoundingClientRect();
+    dragging = true;
+    el.classList.add("hk-dog-dragging");
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+    el.style.left = `${rect.left}px`;
+    el.style.top = `${rect.top}px`;
+    el.style.bottom = "auto";
+    el.setPointerCapture(e.pointerId);
+  });
+
+  el.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    el.style.left = `${startLeft + dx}px`;
+    el.style.top = `${startTop + dy}px`;
+  });
+
+  const endDrag = (e: PointerEvent): void => {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove("hk-dog-dragging");
+    try {
+      el.releasePointerCapture(e.pointerId);
+    } catch {
+      // capture was never actually granted (e.g. synthetic event in tests)
+    }
+    // Only the lane (vertical spot) carries over - horizontal position
+    // resets to 0 so the crossing animation resumes its own path, rather
+    // than jumping from wherever it was dropped.
+    const lane = parseFloat(el.style.top);
+    el.style.left = "0px";
+    setJSON(LANE_KEY, lane);
+  };
+  el.addEventListener("pointerup", endDrag);
+  el.addEventListener("pointercancel", endDrag);
 }

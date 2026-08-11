@@ -6,8 +6,10 @@
 // createWidget, rather than looking up static per-widget markup in
 // index.html. That gives every card the same chrome for free (drag, native
 // resize, a close button, and a visibility state the scene taskbar can also
-// flip) with no per-card boilerplate. A purple mascot (mascot.ts) and a
-// second, autonomous dog avatar (dog-avatar.ts) roam the page; four
+// flip) with no per-card boilerplate. A purple mascot (mascot.ts), an
+// autonomous dog avatar (dog-avatar.ts), a draggable creeper-head
+// (creeper.ts), and a cat that autonomously chases the dog (cat.ts) roam the
+// page; four
 // background layers (particles.ts "fireflies", starchase.ts "lasers",
 // sakura.ts, fireworks.ts) each get their own on/off toggle in the scene
 // taskbar so they're never all four on together for a first-time visitor.
@@ -56,6 +58,8 @@ import { wireThemeToggle } from "./dashboard/theme.js";
 import { wireAvatar } from "./dashboard/avatar.js";
 import { wireMascot } from "./dashboard/mascot.js";
 import { wireDogAvatar } from "./dashboard/dog-avatar.js";
+import { wireCreeper } from "./dashboard/creeper.js";
+import { wireCat } from "./dashboard/cat.js";
 import { wireProfileName } from "./dashboard/profile-name.js";
 import { createWidget, loadVisible, saveVisible, type WidgetHandle } from "./dashboard/draggable.js";
 import { startPrayerCard } from "./dashboard/prayer-times.js";
@@ -116,6 +120,13 @@ if (mascotEl) wireMascot(mascotEl);
 const dogEl = document.getElementById("hk-dog");
 if (dogEl) wireDogAvatar(dogEl);
 
+const creeperEl = document.getElementById("hk-creeper");
+if (creeperEl) wireCreeper(creeperEl);
+
+// The cat needs the dog's element to chase - only wired if both exist.
+const catEl = document.getElementById("hk-cat");
+if (catEl && dogEl) wireCat(catEl, dogEl);
+
 // Direct request (2026-08-03): the header name/title is click-to-edit, not
 // hardcoded to "Adam Rosman" - anyone can write their own name or a project
 // title instead. index.html already ships "Adam Rosman" as the default.
@@ -147,6 +158,8 @@ if (tab1PanelEl && tab2PanelEl) {
 // their container elements here since neither is a createWidget canvas card.
 if (mascotEl) mascotEl.classList.toggle("hk-widget-hidden", !loadVisible("mascot", true));
 if (dogEl) dogEl.classList.toggle("hk-widget-hidden", !loadVisible("dog-avatar", true));
+if (creeperEl) creeperEl.classList.toggle("hk-widget-hidden", !loadVisible("creeper", true));
+if (catEl) catEl.classList.toggle("hk-widget-hidden", !loadVisible("cat", true));
 
 // Direct request (2026-08-03): "i want a separate scene toggle on/off for
 // the fireflies, lasers, sakura, & fireworks. so it dont appear on on by
@@ -285,6 +298,28 @@ if (canvasEl) {
       setVisible: (visible) => {
         saveVisible("dog-avatar", visible);
         dogEl.classList.toggle("hk-widget-hidden", !visible);
+      },
+    });
+  }
+  if (creeperEl) {
+    entries.push({
+      id: "creeper",
+      label: "Creeper",
+      isVisible: () => loadVisible("creeper", true),
+      setVisible: (visible) => {
+        saveVisible("creeper", visible);
+        creeperEl.classList.toggle("hk-widget-hidden", !visible);
+      },
+    });
+  }
+  if (catEl) {
+    entries.push({
+      id: "cat",
+      label: "Cat",
+      isVisible: () => loadVisible("cat", true),
+      setVisible: (visible) => {
+        saveVisible("cat", visible);
+        catEl.classList.toggle("hk-widget-hidden", !visible);
       },
     });
   }

@@ -728,13 +728,16 @@ body {
    `transform` can't cleanly combine two independently-timed motions: the
    outer .hk-dog crosses the viewport and flips to face its direction of
    travel; the inner .hk-dog-hop bounces continuously the whole time - the
-   "jumping action." Autonomous - no pointer events, not draggable, unlike
-   the mascot. */
+   "jumping action." Draggable (dog-avatar.ts): picking it up kills the
+   crossing animation and switches to plain left/top for the drag; releasing
+   restarts the crossing animation at whatever vertical lane (top) it was
+   dropped at, persisted so it keeps that lane on reload. */
 .hk-dog {
   position: fixed; bottom: 18px; left: 0; width: 56px; height: 40px; z-index: 55;
-  pointer-events: none;
+  cursor: grab; touch-action: none; user-select: none;
   animation: hk-dog-cross 16s linear infinite;
 }
+.hk-dog.hk-dog-dragging { cursor: grabbing; z-index: 61; animation: none; }
 .hk-dog svg { display: block; width: 100%; height: 100%; }
 .hk-dog-hop { animation: hk-dog-hop 0.5s ease-in-out infinite; }
 @keyframes hk-dog-cross {
@@ -748,6 +751,47 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-9px); }
 }
+
+/* ---------- Cat (chases the dog above, src/dashboard/cat.ts). Autonomous
+   position is JS-driven (cat.ts's setInterval tick reads the dog's live
+   getBoundingClientRect and steps toward it), not a CSS keyframe, since the
+   target itself moves independently. The `transition` on left/top smooths
+   out the discrete per-tick jumps between ticks into continuous motion (same
+   step cap/easing still happens in JS - nextCatPosition - this is purely
+   visual interpolation, matching the tick interval so one transition
+   finishes right as the next tick starts). transform (the direction-facing
+   flip, applied by cat.ts) gets its own transition so turning around reads
+   as a turn, not a snap. Draggable: picking it up pauses the chase tick;
+   releasing resumes it from wherever it was dropped (cat.ts's `pos` is the
+   same variable the drag handlers and the tick both read/write, so this
+   needs no separate "resume" step). */
+.hk-cat {
+  position: fixed; bottom: 18px; right: 40px; width: 56px; height: 36px; z-index: 54;
+  cursor: grab; touch-action: none; user-select: none;
+  transform-origin: center;
+  transition: left 0.1s linear, top 0.1s linear, transform 0.15s ease-out;
+}
+.hk-cat.hk-cat-dragging { cursor: grabbing; z-index: 61; transition: none; }
+.hk-cat svg { display: block; width: 100%; height: 100%; }
+/* Continuous bounce, independent of the outer element's JS-driven
+   position/flip - same split as .hk-dog-hop, smaller and quicker to read as
+   a lighter cat-sized gait rather than the dog's jump. */
+.hk-cat-hop { animation: hk-cat-hop 0.4s ease-in-out infinite; }
+@keyframes hk-cat-hop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* ---------- Creeper-head (fourth roaming character, src/dashboard/
+   creeper.ts). Draggable via draggable.ts's makeDraggable, same as any
+   widget card - no hover/fall behavior, unlike the mascot. */
+.hk-creeper {
+  position: fixed; left: 28px; bottom: 28px; width: 64px; height: 64px; z-index: 59;
+  cursor: grab; touch-action: none; user-select: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
+}
+.hk-creeper svg { display: block; width: 100%; height: 100%; }
+.hk-creeper.dragging { cursor: grabbing; z-index: 61; }
 
 /* ---------- Scene taskbar (auto-hide left panel, 2026-08-02, direct
    request: "auto-hide taskbar on the left... enable *again after close) &
@@ -958,7 +1002,15 @@ body {
   .hk-particles, .hk-starchase, .hk-sakura, .hk-fireworks { display: none; }
   .hk-mascot-falling { animation: none; }
   .hk-dog, .hk-dog-hop { animation: none; }
+  .hk-cat { transition: none; }
+  .hk-cat-hop { animation: none; }
 }
+/* The cat has no CSS animation to disable - its reduced-motion handling
+   (snapping straight to the trailing spot instead of easing) lives in
+   cat.ts's nextCatPosition, driven by dom-utils.ts's prefersReducedMotion(),
+   same as every other JS-driven motion in this app. The left/top/transform
+   *transition* (the visual-smoothing one, not the animation) is switched
+   off here too, since reduced motion should snap, not glide. */
 
 @media (max-width: 720px) {
   /* Free drag placement doesn't apply here anyway (.hk-widget is forced
@@ -972,4 +1024,6 @@ body {
   .hk-scene-panel-inner { width: 200px; }
   .hk-mascot { width: 48px; height: 48px; }
   .hk-dog { width: 40px; height: 30px; bottom: 12px; }
+  .hk-cat { width: 42px; height: 27px; bottom: 12px; right: 24px; }
+  .hk-creeper { width: 48px; height: 48px; }
 }
